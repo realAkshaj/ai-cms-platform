@@ -1,0 +1,25 @@
+{
+  "name": "ai-cms-platform",
+  "version": "1.0.0",
+  "description": "AI-Powered Content Management Platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd apps/api && npm run dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "install:all": "npm install && npm run install:apps",
+    "install:apps": "npm install --workspaces",
+    "build": "npm run build --workspaces",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["ai", "cms", "saas", "content-management"],
+  "author": "Your Name",
+  "license": "MIT"
+}

@@ -1,0 +1,215 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  MEMBER
+}
+
+enum PlanType {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContentType {
+  ARTICLE
+  PAGE
+  BLOG_POST
+  PRODUCT
+  CUSTOM
+}
+
+// Multi-tenant Organization model
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  domain      String?  @unique
+  plan        PlanType @default(FREE)
+  settings    Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  content     Content[]
+  aiAnalysis  AIAnalysis[]
+  apiKeys     APIKey[]
+  invitations Invitation[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  firstName      String
+  lastName       String
+  password       String
+  avatar         String?
+  role           UserRole   @default(MEMBER)
+  isActive       Boolean    @default(true)
+  emailVerified  Boolean    @default(false)
+  lastLoginAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Multi-tenant relation
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  createdContent Content[]
+  sessions       Session[]
+  refreshTokens  RefreshToken[]
+  sentInvitations Invitation[] @relation("InvitationSender")
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Content {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String
+  content     Json          // Rich text content stored as JSON
+  excerpt     String?
+  type        ContentType   @default(ARTICLE)
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  seoTitle    String?
+  seoDescription String?
+  tags        String[]
+  metadata    Json?         // Custom fields
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Multi-tenant relations
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  // Relations
+  aiAnalysis AIAnalysis[]
+  media      ContentMedia[]
+
+  @@unique([organizationId, slug])
+  @@map("content")
+}
+
+model ContentMedia {
+  id          String   @id @default(cuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  url         String
+  alt         String?
+  caption     String?
+  createdAt   DateTime @default(now())
+
+  contentId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("content_media")
+}
+
+model AIAnalysis {
+  id          String   @id @default(cuid())
+  type        String   // 'seo', 'sentiment', 'content_quality', etc.
+  input       Json     // Input data for analysis
+  result      Json     // AI analysis results
+  confidence  Float?   // Confidence score
+  model       String?  // AI model used
+  createdAt   DateTime @default(now())
+
+  // Multi-tenant relations
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  contentId String?
+  content   Content? @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("ai_analysis")
+}
+
+model APIKey {
+  id          String   @id @default(cuid())
+  name        String
+  key         String   @unique
+  permissions String[] // Array of permissions
+  isActive    Boolean  @default(true)
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model Invitation {
+  id          String   @id @default(cuid())
+  email       String
+  role        UserRole @default(MEMBER)
+  token       String   @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  invitedById String
+  invitedBy   User   @relation("InvitationSender", fields: [invitedById], references: [id])
+
+  @@unique([organizationId, email])
+  @@map("invitations")
+}
