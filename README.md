@@ -369,14 +369,6 @@ docker-compose -f docker-compose.prod.yml up -d
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- **Next.js Team** - For the amazing React framework
-- **Prisma Team** - For the excellent ORM and database toolkit
-- **Tailwind CSS** - For the utility-first CSS framework
-- **OpenAI** - For revolutionizing AI-powered applications
-- **Open Source Community** - For the incredible tools and libraries
-
 ---
 
 <div align="center">
