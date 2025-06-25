@@ -65,15 +65,12 @@ export default function Dashboard() {
         router.push('/content/create');
         break;
       case 'View Analytics':
-        // Placeholder for future analytics page
-        alert('Analytics feature coming soon! 📊');
+        router.push('/content'); // ← Changed this line
         break;
       case 'Customize Design':
-        // Placeholder for future design customization
         alert('Design customization coming soon! 🎨');
         break;
       case 'Settings':
-        // Placeholder for future settings page
         alert('Settings page coming soon! ⚙️');
         break;
       default:
@@ -132,7 +129,7 @@ export default function Dashboard() {
 
   const actions = [
     { icon: '✍️', text: 'Create Content', desc: 'Start writing with AI assistance' },
-    { icon: '📊', text: 'View Analytics', desc: 'See how your content performs' },
+    { icon: '📚', text: 'View Analytics', desc: 'Manage all your content' }, // ← Updated
     { icon: '🎨', text: 'Customize Design', desc: 'Make it uniquely yours' },
     { icon: '⚙️', text: 'Settings', desc: 'Configure your workspace' }
   ];
