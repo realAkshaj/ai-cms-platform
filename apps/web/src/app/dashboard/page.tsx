@@ -15,39 +15,66 @@ export default function Dashboard() {
   const [user, setUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [hoveredLogout, setHoveredLogout] = useState(false);
-  const [hoveredStat, setHoveredStat] = useState<number | null>(null);
-  const [hoveredAction, setHoveredAction] = useState<number | null>(null);
 
   useEffect(() => {
-    // Update time every minute
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
+    console.log('Dashboard: Checking authentication...'); // Debug log
+    
     // Check if user is authenticated
     const token = localStorage.getItem('token');
     if (!token) {
+      console.log('Dashboard: No token found, redirecting to login'); // Debug log
       router.push('/auth/login');
       return;
     }
 
-    // For demo purposes, we'll simulate user data
-    // In a real app, you'd fetch this from your API
-    setTimeout(() => {
+    console.log('Dashboard: Token found:', token.substring(0, 20) + '...'); // Debug log
+
+    // Try to get user data from localStorage
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        console.log('Dashboard: User data found:', parsedUser); // Debug log
+        setUser({
+          id: parsedUser.id || '1',
+          firstName: parsedUser.firstName || 'User',
+          lastName: parsedUser.lastName || '',
+          email: parsedUser.email || 'user@example.com'
+        });
+      } catch (error) {
+        console.error('Dashboard: Error parsing user data:', error);
+        // Set default user if parsing fails
+        setUser({
+          id: '1',
+          firstName: 'User',
+          lastName: '',
+          email: 'user@example.com'
+        });
+      }
+    } else {
+      console.log('Dashboard: No user data found, using defaults'); // Debug log
+      // Set default user if no data found
       setUser({
         id: '1',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john@example.com'
+        firstName: 'User',
+        lastName: '',
+        email: 'user@example.com'
       });
-      setIsLoading(false);
-    }, 1000);
+    }
+
+    setIsLoading(false);
   }, [router]);
 
+  // Update time every minute
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const handleLogout = () => {
+    console.log('Dashboard: Logging out...'); // Debug log
     localStorage.removeItem('token');
+    localStorage.removeItem('userData');
     router.push('/auth/login');
   };
 
@@ -58,14 +85,14 @@ export default function Dashboard() {
     return 'Good evening';
   };
 
-  // Handle action button clicks
   const handleActionClick = (actionText: string) => {
+    console.log('Dashboard: Action clicked:', actionText); // Debug log
     switch (actionText) {
       case 'Create Content':
         router.push('/content/create');
         break;
       case 'View Analytics':
-        router.push('/content'); // ← Changed this line
+        router.push('/content');
         break;
       case 'Customize Design':
         alert('Design customization coming soon! 🎨');
@@ -117,7 +144,34 @@ export default function Dashboard() {
   }
 
   if (!user) {
-    return null;
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <h2>Authentication Error</h2>
+          <p>Unable to load user data. Please try logging in again.</p>
+          <button 
+            onClick={() => router.push('/auth/login')}
+            style={{
+              background: '#4f46e5',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const stats = [
@@ -129,7 +183,7 @@ export default function Dashboard() {
 
   const actions = [
     { icon: '✍️', text: 'Create Content', desc: 'Start writing with AI assistance' },
-    { icon: '📚', text: 'View Analytics', desc: 'Manage all your content' }, // ← Updated
+    { icon: '📚', text: 'View Analytics', desc: 'Manage all your content' },
     { icon: '🎨', text: 'Customize Design', desc: 'Make it uniquely yours' },
     { icon: '⚙️', text: 'Settings', desc: 'Configure your workspace' }
   ];
@@ -209,10 +263,8 @@ export default function Dashboard() {
             
             <button
               onClick={handleLogout}
-              onMouseEnter={() => setHoveredLogout(true)}
-              onMouseLeave={() => setHoveredLogout(false)}
               style={{
-                background: hoveredLogout ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.2)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 color: 'white',
                 padding: '8px 16px',
@@ -292,8 +344,6 @@ export default function Dashboard() {
           {stats.map((stat, index) => (
             <div 
               key={index} 
-              onMouseEnter={() => setHoveredStat(index)}
-              onMouseLeave={() => setHoveredStat(null)}
               style={{
                 background: 'rgba(255, 255, 255, 0.1)',
                 backdropFilter: 'blur(10px)',
@@ -301,8 +351,7 @@ export default function Dashboard() {
                 padding: '24px',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 transition: 'transform 0.2s ease',
-                cursor: 'pointer',
-                transform: hoveredStat === index ? 'translateY(-4px)' : 'translateY(0)'
+                cursor: 'pointer'
               }}
             >
               <div style={{
@@ -365,18 +414,15 @@ export default function Dashboard() {
               <button 
                 key={index}
                 onClick={() => handleActionClick(action.text)}
-                onMouseEnter={() => setHoveredAction(index)}
-                onMouseLeave={() => setHoveredAction(null)}
                 style={{
-                  background: hoveredAction === index ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
                   borderRadius: '12px',
                   padding: '20px',
                   color: 'white',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  textAlign: 'left',
-                  transform: hoveredAction === index ? 'translateY(-2px)' : 'translateY(0)'
+                  textAlign: 'left'
                 }}
               >
                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>
@@ -401,13 +447,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Progress Section */}
+        {/* Success Message */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(124, 58, 237, 0.3) 100%)',
           backdropFilter: 'blur(10px)',
           borderRadius: '20px',
           padding: '32px',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          textAlign: 'center'
         }}>
           <h3 style={{
             color: 'white',
@@ -415,62 +462,54 @@ export default function Dashboard() {
             fontWeight: '700',
             margin: '0 0 16px 0'
           }}>
-            🎯 Your Journey
+            🎉 Welcome to Your AI CMS Platform!
           </h3>
+          <p style={{
+            color: 'rgba(255, 255, 255, 0.9)',
+            fontSize: '16px',
+            margin: '0 0 24px 0',
+            lineHeight: '1.6'
+          }}>
+            Your authentication system is working perfectly! You can now create content, 
+            manage your articles, and explore all the features of your platform.
+          </p>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '20px'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '12px',
+            maxWidth: '600px',
+            margin: '0 auto'
           }}>
-            <div>
-              <h4 style={{
+            <button
+              onClick={() => handleActionClick('Create Content')}
+              style={{
+                background: '#4f46e5',
                 color: 'white',
-                fontSize: '18px',
+                border: 'none',
+                padding: '12px 20px',
+                borderRadius: '8px',
+                fontSize: '14px',
                 fontWeight: '600',
-                margin: '0 0 12px 0'
-              }}>
-                ✅ Getting Started
-              </h4>
-              <div style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '14px', lineHeight: '1.5' }}>
-                <div style={{ marginBottom: '6px' }}>✓ Account created successfully</div>
-                <div style={{ marginBottom: '6px' }}>✓ Email verified</div>
-                <div style={{ marginBottom: '6px' }}>✓ Dashboard accessed</div>
-                <div style={{ opacity: 0.7 }}>→ Ready for content creation!</div>
-              </div>
-            </div>
-            <div>
-              <h4 style={{
+                cursor: 'pointer'
+              }}
+            >
+              ✍️ Create Your First Article
+            </button>
+            <button
+              onClick={() => handleActionClick('View Analytics')}
+              style={{
+                background: 'rgba(255, 255, 255, 0.2)',
                 color: 'white',
-                fontSize: '18px',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                padding: '12px 20px',
+                borderRadius: '8px',
+                fontSize: '14px',
                 fontWeight: '600',
-                margin: '0 0 12px 0'
-              }}>
-                🔄 Coming Up Next
-              </h4>
-              <div style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '14px', lineHeight: '1.5' }}>
-                <div style={{ marginBottom: '6px' }}>○ Create your first content</div>
-                <div style={{ marginBottom: '6px' }}>○ Explore AI features</div>
-                <div style={{ marginBottom: '6px' }}>○ Customize your workspace</div>
-                <div style={{ marginBottom: '6px' }}>○ Invite team members</div>
-              </div>
-            </div>
-          </div>
-          <div style={{
-            marginTop: '24px',
-            padding: '16px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '12px',
-            textAlign: 'center'
-          }}>
-            <p style={{
-              color: 'white',
-              fontSize: '14px',
-              margin: 0,
-              fontWeight: '500'
-            }}>
-              💡 <strong>Pro tip:</strong> This platform is actively being developed. 
-              Exciting new features are coming soon!
-            </p>
+                cursor: 'pointer'
+              }}
+            >
+              📚 View Content Library
+            </button>
           </div>
         </div>
       </main>

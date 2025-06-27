@@ -1,12 +1,11 @@
 import { Metadata } from 'next';
-import CreateContent from './CreateContent';
+import ContentList from './ContentList';
 
 export const metadata: Metadata = {
-  title: 'Create Content - AI CMS Platform',
-  description: 'Create amazing content with AI assistance',
+  title: 'Content Management - AI CMS Platform',
+  description: 'Manage all your content in one place',
 };
 
-export default function CreateContentPage() {
-  return <CreateContent />;
+export default function ContentListPage() {
+  return <ContentList />;
 }
-

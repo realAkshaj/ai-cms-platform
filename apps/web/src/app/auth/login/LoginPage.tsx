@@ -67,10 +67,10 @@ export default function LoginPage() {
     if (!validateForm()) {
       return;
     }
-
+  
     setIsLoading(true);
     setErrors({});
-
+  
     try {
       const response = await fetch('http://localhost:3001/api/auth/login', {
         method: 'POST',
@@ -82,22 +82,37 @@ export default function LoginPage() {
           password: formData.password,
         }),
       });
-
+  
       const data = await response.json();
-
+      console.log('Login response:', data); // Debug log
+  
       if (response.ok) {
-        // Store the token
-        localStorage.setItem('token', data.token);
+        console.log('Login successful!'); // Debug log
         
-        // Redirect to dashboard or home page
-        router.push('/dashboard');
+        // Extract data from your backend's response format
+        const token = data.data.accessToken;
+        const userInfo = data.data.user;
+        
+        // Store the token
+        localStorage.setItem('token', token);
+        
+        // Store user data with proper extraction
+        const userData = {
+          id: userInfo.id,
+          firstName: userInfo.firstName,  // This should now be the real name!
+          lastName: userInfo.lastName,    // This should now be the real name!
+          email: userInfo.email
+        };
+        
+        console.log('Storing user data:', userData); // Debug log
+        localStorage.setItem('userData', JSON.stringify(userData));
+        
+        // Redirect to dashboard
+        window.location.href = '/dashboard';
+        
       } else {
         if (data.message) {
-          if (data.message.includes('Invalid credentials') || data.message.includes('User not found')) {
-            setErrors({ general: 'Invalid email or password' });
-          } else {
-            setErrors({ general: data.message });
-          }
+          setErrors({ general: data.message });
         } else {
           setErrors({ general: 'Login failed. Please try again.' });
         }
