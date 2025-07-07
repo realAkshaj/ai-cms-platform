@@ -1,112 +1,111 @@
-import axios, { AxiosInstance } from 'axios';
+// API Client for communicating with backend
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
-
-// Create axios instance
-const api: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  withCredentials: true, // Include cookies for refresh tokens
-});
-
-// Types for API responses
-export interface ApiResponse<T = any> {
+interface ApiResponse<T = any> {
   success: boolean;
   message: string;
   data?: T;
-  errors?: Array<{ field: string; message: string }>;
 }
 
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  organization: {
-    id: string;
-    name: string;
-    slug: string;
-    plan: string;
-  };
-}
+class ApiClient {
+  private baseURL: string;
 
-export interface AuthResponse {
-  user: User;
-  accessToken: string;
-}
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
 
-// Token management
-let accessToken: string | null = null;
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    
+    // Default headers
+    const defaultHeaders: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
 
-export const setAccessToken = (token: string | null) => {
-  accessToken = token;
-  if (typeof window !== 'undefined') {
+    // Add authorization header if token exists
     if (token) {
-      localStorage.setItem('accessToken', token);
-    } else {
-      localStorage.removeItem('accessToken');
+      defaultHeaders.Authorization = `Bearer ${token}`;
+    }
+
+    // Merge headers
+    const headers = {
+      ...defaultHeaders,
+      ...options.headers,
+    };
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If token is invalid, clear it and redirect to login
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userData');
+          window.location.href = '/auth/login';
+        }
+
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
     }
   }
-};
 
-export const getAccessToken = (): string | null => {
-  if (accessToken) return accessToken;
-  if (typeof window !== 'undefined') {
-    accessToken = localStorage.getItem('accessToken');
+  // GET request
+  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'GET',
+    });
   }
-  return accessToken;
-};
 
-// Request interceptor to add auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = getAccessToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+  // POST request
+  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
-);
 
-// Auth API methods
-export const authApi = {
-  // Register new user
-  register: async (data: {
-    email: string;
-    firstName: string;
-    lastName: string;
-    password: string;
-    organizationName?: string;
-  }): Promise<ApiResponse<AuthResponse>> => {
-    const response = await api.post('/auth/register', data);
-    return response.data;
-  },
+  // PUT request
+  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
 
-  // Login user
-  login: async (data: {
-    email: string;
-    password: string;
-  }): Promise<ApiResponse<AuthResponse>> => {
-    const response = await api.post('/auth/login', data);
-    return response.data;
-  },
+  // DELETE request
+  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'DELETE',
+    });
+  }
 
-  // Logout user
-  logout: async (): Promise<ApiResponse> => {
-    const response = await api.post('/auth/logout');
-    setAccessToken(null);
-    return response.data;
-  },
+  // PATCH request
+  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+}
 
-  // Get current user profile
-  getProfile: async (): Promise<ApiResponse<{ user: User; organization: any }>> => {
-    const response = await api.get('/auth/profile');
-    return response.data;
-  },
-};
+// Create and export the API client instance
+export const apiClient = new ApiClient(API_BASE_URL);
 
-export default api;
+// Export types for use in other files
+export type { ApiResponse };
