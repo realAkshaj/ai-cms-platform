@@ -5,12 +5,27 @@ import { AuthRequest, authenticateToken } from '../middleware/auth';
 const router = Router();
 const contentService = new ContentService();
 
+console.log('📝 Content routes loaded!'); // Debug log
+
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
+
+// Test route to verify routes are working
+router.get('/test', (req: AuthRequest, res: Response) => {
+  console.log('🧪 Content test route hit!');
+  res.json({
+    success: true,
+    message: 'Content routes are working!',
+    user: req.user
+  });
+});
 
 // GET /api/content - List content for user's organization
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    console.log('📋 GET /api/content - List content request received');
+    console.log('👤 User:', req.user);
+    
     const userId = req.user!.id;
     const organizationId = req.user!.organizationId;
     
@@ -23,6 +38,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       sortBy = 'updatedAt',
       sortOrder = 'desc'
     } = req.query;
+
+    console.log('🔍 Query params:', { page, limit, status, type, search, sortBy, sortOrder });
 
     const filters = {
       organizationId,
@@ -43,12 +60,14 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       }
     });
 
+    console.log('✅ Content fetched successfully:', result);
+
     res.json({
       success: true,
       data: result
     });
   } catch (error) {
-    console.error('Error fetching content:', error);
+    console.error('❌ Error fetching content:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch content'
@@ -56,9 +75,64 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// POST /api/content - Create new content
+router.post('/', async (req: AuthRequest, res: Response) => {
+  try {
+    console.log('📝 POST /api/content - Create content request received');
+    console.log('👤 User:', req.user);
+    console.log('📄 Request body:', req.body);
+    
+    const userId = req.user!.id;
+    const organizationId = req.user!.organizationId;
+    
+    const contentData = {
+      ...req.body,
+      authorId: userId,
+      organizationId
+    };
+
+    console.log('💾 Content data to save:', contentData);
+
+    // Validate required fields
+    if (!contentData.title || !contentData.content) {
+      console.log('❌ Validation failed: Missing title or content');
+      return res.status(400).json({
+        success: false,
+        message: 'Title and content are required'
+      });
+    }
+
+    const content = await contentService.createContent(contentData);
+
+    console.log('🎉 Content created successfully:', content);
+
+    res.status(201).json({
+      success: true,
+      data: content,
+      message: 'Content created successfully'
+    });
+  } catch (error: any) {
+    console.error('💥 Error creating content:', error);
+    
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        message: 'Content with this slug already exists'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create content',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/content/:id - Get single content item
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    console.log('📖 GET /api/content/:id - Get single content');
     const { id } = req.params;
     const organizationId = req.user!.organizationId;
 
@@ -84,53 +158,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/content - Create new content
-router.post('/', async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id;
-    const organizationId = req.user!.organizationId;
-    
-    const contentData = {
-      ...req.body,
-      authorId: userId,
-      organizationId
-    };
-
-    // Validate required fields
-    if (!contentData.title || !contentData.body) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title and body are required'
-      });
-    }
-
-    const content = await contentService.createContent(contentData);
-
-    res.status(201).json({
-      success: true,
-      data: content,
-      message: 'Content created successfully'
-    });
-  } catch (error) {
-    console.error('Error creating content:', error);
-    
-    if (error.code === 'P2002') {
-      return res.status(400).json({
-        success: false,
-        message: 'Content with this slug already exists'
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create content'
-    });
-  }
-});
-
 // PUT /api/content/:id - Update content
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    console.log('✏️ PUT /api/content/:id - Update content');
     const { id } = req.params;
     const organizationId = req.user!.organizationId;
     const updateData = req.body;
@@ -149,7 +180,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       data: content,
       message: 'Content updated successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating content:', error);
     
     if (error.code === 'P2002') {
@@ -166,37 +197,10 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// DELETE /api/content/:id - Delete content
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const organizationId = req.user!.organizationId;
-
-    const deleted = await contentService.deleteContent(id, organizationId);
-
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        message: 'Content not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Content deleted successfully'
-    });
-  } catch (error) {
-    console.error('Error deleting content:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete content'
-    });
-  }
-});
-
 // POST /api/content/:id/publish - Publish content
 router.post('/:id/publish', async (req: AuthRequest, res: Response) => {
   try {
+    console.log('🚀 POST /api/content/:id/publish - Publish content');
     const { id } = req.params;
     const organizationId = req.user!.organizationId;
 
@@ -223,52 +227,6 @@ router.post('/:id/publish', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/content/:id/unpublish - Unpublish content
-router.post('/:id/unpublish', async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const organizationId = req.user!.organizationId;
-
-    const content = await contentService.unpublishContent(id, organizationId);
-
-    if (!content) {
-      return res.status(404).json({
-        success: false,
-        message: 'Content not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: content,
-      message: 'Content unpublished successfully'
-    });
-  } catch (error) {
-    console.error('Error unpublishing content:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to unpublish content'
-    });
-  }
-});
-
-// GET /api/content/analytics/stats - Get content analytics
-router.get('/analytics/stats', async (req: AuthRequest, res: Response) => {
-  try {
-    const organizationId = req.user!.organizationId;
-    const stats = await contentService.getContentStats(organizationId);
-
-    res.json({
-      success: true,
-      data: stats
-    });
-  } catch (error) {
-    console.error('Error fetching content stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch content statistics'
-    });
-  }
-});
+console.log('✅ Content routes setup complete!');
 
 export default router;

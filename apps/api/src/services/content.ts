@@ -30,7 +30,7 @@ export interface ContentData {
   title: string;
   slug?: string;
   excerpt?: string;
-  content: string;  // Changed from 'body' to 'content' to match your schema
+  content: string;
   status?: ContentStatus;
   type?: ContentType;
   featuredImage?: string;
@@ -71,6 +71,85 @@ export class ContentService {
     return slug;
   }
 
+  // Simple type mapping - just use what's available
+  private mapContentType(frontendType: string): ContentType {
+    // Log available types for debugging
+    console.log('Available ContentType enum values:', ContentType);
+    
+    // Use only the types that definitely exist in your schema
+    switch (frontendType.toUpperCase()) {
+      case 'POST':
+        return ContentType.ARTICLE;
+      case 'PAGE':
+        return ContentType.PAGE;
+      case 'ARTICLE':
+        return ContentType.ARTICLE;
+      case 'NEWSLETTER':
+        return ContentType.ARTICLE; // Default to ARTICLE if NEWSLETTER doesn't exist
+      default:
+        return ContentType.ARTICLE;
+    }
+  }
+
+  // Create new content - simplified version
+  async createContent(data: ContentData) {
+    try {
+      console.log('📝 Creating content with data:', data);
+      
+      // Generate slug if not provided
+      if (!data.slug || data.slug.trim() === '') {
+        const existingSlugs = await prisma.content.findMany({
+          where: { organizationId: data.organizationId },
+          select: { slug: true }
+        }).then(results => results.map(r => r.slug));
+        
+        data.slug = this.generateSlug(data.title, existingSlugs);
+      }
+
+      // Map the content type
+      const mappedType = data.type ? this.mapContentType(data.type.toString()) : ContentType.ARTICLE;
+      console.log('🔄 Mapped type:', mappedType);
+
+      const contentToCreate = {
+        title: data.title,
+        slug: data.slug,
+        excerpt: data.excerpt || '',
+        body: data.content,  // Map 'content' to 'body' field in database
+        status: data.status || ContentStatus.DRAFT,
+        type: mappedType,
+        featuredImage: data.featuredImage || '',
+        seoTitle: data.seoTitle || '',
+        seoDescription: data.seoDescription || '',
+        tags: data.tags || [],
+        authorId: data.authorId,
+        organizationId: data.organizationId,
+        publishedAt: data.status === ContentStatus.PUBLISHED ? new Date() : null
+      };
+
+      console.log('💾 Saving content to database:', contentToCreate);
+
+      const content = await prisma.content.create({
+        data: contentToCreate,
+        include: {
+          author: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      console.log('✅ Content created successfully:', content);
+      return content;
+    } catch (error) {
+      console.error('❌ Error creating content:', error);
+      throw error;
+    }
+  }
+
   // Get paginated content with filters and sorting
   async getContent(options: GetContentOptions) {
     const { filters, pagination, sorting } = options;
@@ -87,14 +166,7 @@ export class ContentService {
     }
 
     if (filters.type) {
-      // Map frontend types to your schema types
-      const typeMapping: { [key: string]: ContentType } = {
-        'POST': 'BLOG_POST',
-        'PAGE': 'PAGE',
-        'ARTICLE': 'ARTICLE',
-        'NEWSLETTER': 'CUSTOM'
-      };
-      where.type = typeMapping[filters.type.toUpperCase()] || 'ARTICLE';
+      where.type = this.mapContentType(filters.type);
     }
 
     if (filters.authorId) {
@@ -105,7 +177,7 @@ export class ContentService {
       where.OR = [
         { title: { contains: filters.search, mode: 'insensitive' } },
         { excerpt: { contains: filters.search, mode: 'insensitive' } },
-        { content: { contains: filters.search, mode: 'insensitive' } },
+        { body: { contains: filters.search, mode: 'insensitive' } },  // Use 'body' field
         { tags: { has: filters.search } }
       ];
     }
@@ -175,68 +247,9 @@ export class ContentService {
     }
   }
 
-  // Create new content
-  async createContent(data: ContentData) {
-    try {
-      // Generate slug if not provided
-      if (!data.slug || data.slug.trim() === '') {
-        const existingSlugs = await prisma.content.findMany({
-          where: { organizationId: data.organizationId },
-          select: { slug: true }
-        }).then(results => results.map(r => r.slug));
-        
-        data.slug = this.generateSlug(data.title, existingSlugs);
-      }
-
-      // Map frontend types to schema types
-      const typeMapping: { [key: string]: ContentType } = {
-        'POST': 'BLOG_POST',
-        'PAGE': 'PAGE',
-        'ARTICLE': 'ARTICLE',
-        'NEWSLETTER': 'CUSTOM'
-      };
-
-      const contentType = data.type ? typeMapping[data.type.toString()] || 'ARTICLE' : 'ARTICLE';
-
-      const content = await prisma.content.create({
-        data: {
-          title: data.title,
-          slug: data.slug,
-          excerpt: data.excerpt,
-          content: data.content,  // Changed from 'body' to 'content'
-          status: data.status || ContentStatus.DRAFT,
-          type: contentType,
-          featuredImage: data.featuredImage,
-          seoTitle: data.seoTitle,
-          seoDescription: data.seoDescription,
-          tags: data.tags || [],
-          authorId: data.authorId,
-          organizationId: data.organizationId,
-          publishedAt: data.status === ContentStatus.PUBLISHED ? new Date() : null
-        },
-        include: {
-          author: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
-        }
-      });
-
-      return content;
-    } catch (error) {
-      console.error('Error creating content:', error);
-      throw error;
-    }
-  }
-
   // Update content
   async updateContent(id: string, data: Partial<ContentData>, organizationId: string) {
     try {
-      // Check if content exists and belongs to organization
       const existingContent = await prisma.content.findFirst({
         where: { id, organizationId }
       });
@@ -245,31 +258,17 @@ export class ContentService {
         return null;
       }
 
-      // Handle slug update if title changed
       const updateData: any = { ...data };
-      if (data.title && data.title !== existingContent.title) {
-        if (!data.slug || data.slug.trim() === '') {
-          const existingSlugs = await prisma.content.findMany({
-            where: { 
-              organizationId,
-              id: { not: id } // Exclude current content
-            },
-            select: { slug: true }
-          }).then(results => results.map(r => r.slug));
-          
-          updateData.slug = this.generateSlug(data.title, existingSlugs);
-        }
+      
+      // Map content field to body field for database
+      if (data.content) {
+        updateData.body = data.content;
+        delete updateData.content;
       }
 
       // Handle type mapping
       if (data.type) {
-        const typeMapping: { [key: string]: ContentType } = {
-          'POST': 'BLOG_POST',
-          'PAGE': 'PAGE',
-          'ARTICLE': 'ARTICLE',
-          'NEWSLETTER': 'CUSTOM'
-        };
-        updateData.type = typeMapping[data.type.toString()] || 'ARTICLE';
+        updateData.type = this.mapContentType(data.type.toString());
       }
 
       // Set publishedAt when publishing
@@ -277,7 +276,6 @@ export class ContentService {
         updateData.publishedAt = new Date();
       }
 
-      // Clear publishedAt when unpublishing
       if (data.status && data.status !== ContentStatus.PUBLISHED) {
         updateData.publishedAt = null;
       }
@@ -350,7 +348,7 @@ export class ContentService {
     }
   }
 
-  // Get content statistics (simplified without views/likes/shares if not in schema)
+  // Get content statistics
   async getContentStats(organizationId: string): Promise<ContentStats> {
     try {
       const [
@@ -385,25 +383,13 @@ export class ContentService {
         published,
         draft,
         archived,
-        totalViews: 0,  // Set to 0 if not in your schema
-        totalLikes: 0,  // Set to 0 if not in your schema
-        totalShares: 0, // Set to 0 if not in your schema
+        totalViews: 0,
+        totalLikes: 0,
+        totalShares: 0,
         recentContent
       };
     } catch (error) {
       console.error('Error fetching content stats:', error);
-      throw error;
-    }
-  }
-
-  // Simplified increment views (remove if not in schema)
-  async incrementViews(id: string, organizationId: string) {
-    try {
-      // If your schema doesn't have views field, just return success
-      console.log(`Would increment views for content ${id} in organization ${organizationId}`);
-      return true;
-    } catch (error) {
-      console.error('Error incrementing views:', error);
       throw error;
     }
   }

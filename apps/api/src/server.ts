@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import contentRoutes from './routes/content';
 
 // Load environment variables
 dotenv.config();
@@ -23,6 +24,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+app.use('/api/content', contentRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
