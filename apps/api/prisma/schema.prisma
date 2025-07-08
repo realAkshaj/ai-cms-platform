@@ -18,8 +18,9 @@ model Organization {
   updatedAt DateTime @updatedAt
 
   // Relations
-  users    User[]
-  content  Content[]
+  users      User[]
+  content    Content[]
+  aiAnalysis AIAnalysis[] // 🤖 ADDED THIS LINE
 
   @@map("organizations")
 }
@@ -46,9 +47,9 @@ model Content {
   title          String
   slug           String
   excerpt        String?
-  body           String        @db.Text
+  body           String        @db.Text // This is the main content field
   status         ContentStatus @default(DRAFT)
-  type           ContentType   @default(POST)
+  type           ContentType   @default(ARTICLE)
   featuredImage  String?
   seoTitle       String?
   seoDescription String?
@@ -62,11 +63,12 @@ model Content {
   organizationId String
   author         User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  aiAnalysis     AIAnalysis[] // 🤖 ADDED THIS LINE
 
-  // Analytics
-  views          Int @default(0)
-  likes          Int @default(0)
-  shares         Int @default(0)
+  // Analytics (optional - you can remove these if you don't want them)
+  views  Int @default(0)
+  likes  Int @default(0)
+  shares Int @default(0)
 
   // Indexes for performance
   @@unique([slug, organizationId])
@@ -74,6 +76,22 @@ model Content {
   @@index([authorId])
   @@index([publishedAt])
   @@map("content")
+}
+
+model AIAnalysis {
+  id        String   @id @default(cuid())
+  type      String // 'CONTENT_GENERATION', 'IMPROVEMENT', 'IDEAS'
+  input     String   @db.Text
+  output    String   @db.Text
+  createdAt DateTime @default(now())
+
+  // Optional relationships
+  contentId      String?
+  content        Content?     @relation(fields: [contentId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("ai_analysis")
 }
 
 enum ContentStatus {

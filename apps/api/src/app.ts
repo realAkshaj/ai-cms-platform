@@ -1,8 +1,12 @@
+// apps/api/src/app.ts
+// Updated with AI routes - only 3 lines changed!
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import contentRoutes from './routes/content';
+import aiRoutes from './routes/ai'; // 🤖 ADD THIS LINE
 
 dotenv.config();
 
@@ -22,13 +26,19 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    ai: process.env.GEMINI_API_KEY ? 'enabled' : 'disabled' // 🤖 ADD THIS LINE
   });
+});
+
+app.get('/api/ai-test', (req, res) => {
+  res.json({ message: 'AI routes debug test works' });
 });
 
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/ai', aiRoutes); // 🤖 ADD THIS LINE
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -54,6 +64,8 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`📝 Content API: http://localhost:${PORT}/api/content`);
+  console.log(`🤖 AI API: http://localhost:${PORT}/api/ai`); // 🤖 ADD THIS LINE
+  console.log(`🧠 Gemini AI: ${process.env.GEMINI_API_KEY ? 'Enabled' : 'Not configured'}`); // 🤖 ADD THIS LINE
 });
 
 export default app;
