@@ -34,12 +34,6 @@ I'm building this as a modern, AI-powered alternative to traditional CMS platfor
 - **Loading States** - No more wondering if something's working
 - **Mobile Ready** - Looks great on phones, tablets, and desktops
 
-### 🚀 Coming Soon
-- **AI Content Generation** - Let AI help you write blog posts, product descriptions, and more
-- **Smart SEO Optimization** - Automatic keyword suggestions and content improvements  
-- **Real-time Collaboration** - Edit content together with your team, Google Docs style
-- **Advanced Analytics** - See how your content performs and what your audience loves
-- **Rich Media Support** - Images, videos, and files with AI-powered optimization
 
 ## 🏗️ How It All Fits Together
 
