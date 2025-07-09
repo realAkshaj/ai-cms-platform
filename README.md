@@ -139,22 +139,37 @@ That's it! Open http://localhost:3000 and you should see the beautiful registrat
 ## 📁 Project Structure (Where Everything Lives)
 
 ```
-ai-cms-platform/
-├── 📱 apps/
-│   ├── 🌐 web/                 # Next.js frontend (the pretty stuff)
-│   │   ├── src/app/auth/       # Login and registration pages
-│   │   ├── src/app/dashboard/  # User dashboard
-│   │   └── src/components/     # Reusable UI components (coming soon)
-│   │
-│   └── 🔌 api/                 # Express.js backend (the smart stuff)
-│       ├── src/routes/         # API endpoints
-│       ├── src/services/       # Business logic
-│       ├── src/middleware/     # Security and validation
-│       └── prisma/             # Database schema
-│
-├── 🐳 docker-compose.yml       # Database setup
-├── 📦 package.json             # Project configuration
-└── 📖 README.md                # You are here!
+📁 PROJECT STRUCTURE:
+
+apps/
+├── api/                          # Backend (Express + Prisma)
+│   ├── src/
+│   │   ├── routes/
+│   │   │   ├── auth.ts          # Working auth endpoints
+│   │   │   ├── content.ts       # Complete content CRUD + AI generation
+│   │   │   └── ai.ts            # AI-specific endpoints
+│   │   ├── services/
+│   │   │   ├── content.ts       # Database service layer
+│   │   │   └── ai.ts            # Enhanced AI service with quality controls
+│   │   ├── middleware/
+│   │   │   └── auth.ts          # JWT authentication
+│   │   └── app.ts              # Main server file
+│   └── prisma/
+│       └── schema.prisma       # Extended with Content model
+└── web/                         # Frontend (Next.js)
+    └── src/
+        ├── app/
+        │   ├── auth/           # Login & register pages
+        │   ├── content/        # Content management pages
+        │   │   ├── create/     # Content creation with AI
+        │   │   ├── view/[id]/  # Content viewing page
+        │   │   └── edit/[id]/  # Content editing page
+        │   ├── dashboard/      # User dashboard
+        │   └── page.tsx       # Homepage
+        └── services/
+            ├── api.ts          # Axios API client
+            ├── authService.ts  # Frontend auth service
+            └── contentService.ts # Frontend content service with AI
 ```
 
 ## 🔌 API Endpoints (What's Working)
