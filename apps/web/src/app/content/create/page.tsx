@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AIAssistant from '../../../components/AIAssistant';
 
 interface CreateContentData {
   title: string;
@@ -21,10 +22,8 @@ interface CreateContentData {
 const contentService = {
   generateSlug: (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
   
-  createContent: async (data: CreateContentData) => {
-    console.log('📤 Sending content to API:', data);
-    
-    // Debug all possible token locations
+  // Helper function to get authentication token
+  getAuthToken: () => {
     console.log('🔍 All localStorage items:');
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -44,13 +43,19 @@ const contentService = {
     console.log('🔐 authToken:', authToken ? 'Found' : 'Not found');
     
     const finalToken = accessToken || token || authToken;
-    
     console.log('🔐 Using token:', finalToken ? finalToken.substring(0, 30) + '...' : 'None');
     
     if (!finalToken) {
       throw new Error('No authentication token found. Please log in again.');
     }
+    
+    return finalToken;
+  },
 
+  createContent: async (data: CreateContentData) => {
+    console.log('📤 Sending content to API:', data);
+    
+    const finalToken = contentService.getAuthToken();
     console.log('🌐 Making request to:', 'http://localhost:3001/api/content');
 
     try {
@@ -85,6 +90,139 @@ const contentService = {
       console.error('❌ Fetch error:', fetchError);
       throw fetchError;
     }
+  },
+
+  // NEW: AI Content Generation
+  generateAIContent: async (options: {
+    topic: string;
+    type?: 'POST' | 'ARTICLE' | 'NEWSLETTER' | 'PAGE';
+    tone?: 'professional' | 'casual' | 'friendly' | 'authoritative' | 'conversational';
+    length?: 'short' | 'medium' | 'long';
+    keywords?: string[];
+    includeOutline?: boolean;
+    includeSEO?: boolean;
+  }) => {
+    console.log('🤖 Generating AI content with options:', options);
+    
+    const finalToken = contentService.getAuthToken();
+    console.log('🌐 Making AI request to:', 'http://localhost:3001/api/content/generate');
+
+    try {
+      const response = await fetch('http://localhost:3001/api/content/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${finalToken}`
+        },
+        body: JSON.stringify({
+          topic: options.topic,
+          type: options.type || 'ARTICLE',
+          tone: options.tone || 'professional',
+          length: options.length || 'medium',
+          keywords: options.keywords,
+          includeOutline: options.includeOutline !== false, // Default to true
+          includeSEO: options.includeSEO !== false // Default to true
+        })
+      });
+
+      console.log('📡 AI Response status:', response.status);
+      console.log('📡 AI Response ok:', response.ok);
+
+      const result = await response.json();
+      console.log('📥 AI API Response:', result);
+
+      if (!response.ok) {
+        console.error('❌ AI request failed with status:', response.status);
+        console.error('❌ AI Error details:', result);
+        throw new Error(result.message || `AI generation failed! status: ${response.status}`);
+      }
+
+      if (!result.success) {
+        console.error('❌ AI API returned success: false');
+        throw new Error(result.message || 'Failed to generate AI content');
+      }
+
+      console.log('✅ AI content generated successfully!');
+      if (result.metadata?.qualityScore) {
+        console.log('📊 Content quality score:', result.metadata.qualityScore);
+      }
+
+      return result.data;
+    } catch (fetchError) {
+      console.error('❌ AI generation fetch error:', fetchError);
+      throw fetchError;
+    }
+  },
+
+  // NEW: Generate content ideas
+  generateContentIdeas: async (topic: string, count: number = 5) => {
+    console.log('💡 Generating content ideas for:', topic);
+    
+    const finalToken = contentService.getAuthToken();
+
+    try {
+      const response = await fetch('http://localhost:3001/api/content/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${finalToken}`
+        },
+        body: JSON.stringify({
+          action: 'ideas', // You can extend your backend to handle different actions
+          topic,
+          count
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to generate content ideas');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('❌ Error generating content ideas:', error);
+      throw error;
+    }
+  },
+
+  // NEW: Improve existing content
+  improveContent: async (content: string, improvements: string[] = []) => {
+    console.log('✨ Improving content...');
+    
+    const finalToken = contentService.getAuthToken();
+
+    try {
+      const response = await fetch('http://localhost:3001/api/content/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${finalToken}`
+        },
+        body: JSON.stringify({
+          action: 'improve', // You can extend your backend to handle different actions
+          content,
+          improvements: improvements.length > 0 ? improvements : [
+            'Improve clarity and readability',
+            'Enhance SEO optimization',
+            'Add more specific examples',
+            'Remove generic filler content'
+          ]
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to improve content');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('❌ Error improving content:', error);
+      throw error;
+    }
   }
 };
 
@@ -110,6 +248,39 @@ export default function CreateContentPage() {
   });
 
   const [tagInput, setTagInput] = useState('');
+
+  // 🤖 Handle AI-generated content insertion
+  const handleAIContentGenerated = (aiContent: any) => {
+    console.log('🤖 AI Content received:', aiContent);
+    
+    // Update form with AI-generated content
+    setFormData(prev => ({
+      ...prev,
+      // Insert title if provided
+      ...(aiContent.title && { title: aiContent.title }),
+      // Insert content if provided (convert HTML to text for now)
+      ...(aiContent.content && { content: aiContent.content }),
+      // Insert excerpt if provided
+      ...(aiContent.excerpt && { excerpt: aiContent.excerpt }),
+      // Insert SEO data if provided
+      ...(aiContent.seoTitle && { seoTitle: aiContent.seoTitle }),
+      ...(aiContent.seoDescription && { seoDescription: aiContent.seoDescription }),
+      // Insert tags if provided
+      ...(aiContent.suggestedTags && { tags: [...prev.tags, ...aiContent.suggestedTags.filter((tag: string) => !prev.tags.includes(tag))] })
+    }));
+
+    // Auto-generate slug if title was provided
+    if (aiContent.title) {
+      setFormData(prev => ({
+        ...prev,
+        slug: contentService.generateSlug(aiContent.title)
+      }));
+    }
+
+    // Show success message
+    const contentType = aiContent.title ? 'content' : aiContent.suggestedTags ? 'tags' : 'content';
+    alert(`🎉 AI-generated ${contentType} has been inserted successfully!`);
+  };
 
   // Handle form changes
   const handleChange = (field: keyof CreateContentData, value: any) => {
@@ -370,8 +541,7 @@ export default function CreateContentPage() {
               fontSize: '16px',
               lineHeight: '1.8',
               whiteSpace: 'pre-wrap'
-            }}>
-              {formData.content || 'Start writing your amazing content...'}
+            }} dangerouslySetInnerHTML={{ __html: formData.content || 'Start writing your amazing content...' }}>
             </div>
 
             {formData.tags.length > 0 && (
@@ -456,7 +626,7 @@ export default function CreateContentPage() {
                   margin: '4px 0 0 0',
                   fontSize: '16px'
                 }}>
-                  Write amazing content with AI assistance
+                  Write amazing content with AI assistance 🤖
                 </p>
               </div>
             </div>
@@ -706,7 +876,7 @@ export default function CreateContentPage() {
               <textarea
                 value={formData.content}
                 onChange={(e) => handleChange('content', e.target.value)}
-                placeholder="Start writing your amazing content here..."
+                placeholder="Start writing your amazing content here or use the AI assistant..."
                 rows={20}
                 style={{
                   width: '100%',
@@ -732,7 +902,7 @@ export default function CreateContentPage() {
                 color: 'rgba(255, 255, 255, 0.6)',
                 fontSize: '14px'
               }}>
-                <span>💡 Tip: Use markdown syntax for formatting. AI assistance coming soon!</span>
+                <span>💡 Tip: Use the AI assistant (🤖) to generate content automatically!</span>
               </div>
             </div>
           </div>
@@ -1060,6 +1230,12 @@ export default function CreateContentPage() {
           </div>
         </div>
       </div>
+
+      {/* 🤖 AI Assistant - The Magic Component! */}
+      <AIAssistant 
+        onContentGenerated={handleAIContentGenerated}
+        currentContent={formData.content}
+      />
     </div>
   );
 }

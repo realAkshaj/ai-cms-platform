@@ -1,5 +1,5 @@
 // apps/web/src/app/content/page.tsx
-// Complete content management page in one file
+// Complete content management page with View functionality
 
 'use client';
 
@@ -245,6 +245,10 @@ export default function ContentListPage() {
 
   const handleEdit = (id: string) => {
     router.push(`/content/edit/${id}`);
+  };
+
+  const handleView = (id: string) => {
+    router.push(`/content/view/${id}`);
   };
 
   if (loading) {
@@ -635,20 +639,37 @@ export default function ContentListPage() {
                     </span>
                   </div>
 
-                  {/* Title */}
-                  <h3 style={{
-                    color: 'white',
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    margin: '0 0 12px 0',
-                    lineHeight: '1.4',
-                    overflow: 'hidden',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical'
-                  }}>
-                    {item.title}
-                  </h3>
+                  {/* Title - Make it clickable to view content */}
+                  <Link
+                    href={`/content/view/${item.id}`}
+                    style={{
+                      textDecoration: 'none',
+                      color: 'inherit'
+                    }}
+                  >
+                    <h3 style={{
+                      color: 'white',
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      margin: '0 0 12px 0',
+                      lineHeight: '1.4',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      cursor: 'pointer',
+                      transition: 'color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLElement).style.color = '#93c5fd';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLElement).style.color = 'white';
+                    }}
+                    >
+                      {item.title}
+                    </h3>
+                  </Link>
 
                   {/* Content Preview */}
                   {item.excerpt && (
@@ -718,8 +739,29 @@ export default function ContentListPage() {
                     by {item.author.firstName} {item.author.lastName}
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions - Updated with View button */}
                   <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => handleView(item.id)}
+                      style={{
+                        background: 'rgba(59, 130, 246, 0.8)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      👁️ View
+                    </button>
+                    
                     <button
                       onClick={() => handleEdit(item.id)}
                       style={{
@@ -731,11 +773,16 @@ export default function ContentListPage() {
                         fontSize: '12px',
                         fontWeight: '600',
                         cursor: 'pointer',
-                        flex: 1
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
                       }}
                     >
                       ✏️ Edit
                     </button>
+                    
                     {item.status === 'DRAFT' && (
                       <button
                         onClick={() => handlePublish(item.id)}
@@ -743,17 +790,17 @@ export default function ContentListPage() {
                           background: 'rgba(34, 197, 94, 0.8)',
                           color: 'white',
                           border: 'none',
-                          padding: '8px 16px',
+                          padding: '8px 12px',
                           borderRadius: '8px',
                           fontSize: '12px',
                           fontWeight: '600',
-                          cursor: 'pointer',
-                          flex: 1
+                          cursor: 'pointer'
                         }}
                       >
-                        🚀 Publish
+                        🚀
                       </button>
                     )}
+                    
                     <button
                       onClick={() => handleDelete(item.id, item.title)}
                       style={{

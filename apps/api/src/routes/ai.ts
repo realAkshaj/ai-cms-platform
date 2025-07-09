@@ -1,10 +1,9 @@
 // apps/api/src/routes/ai.ts
-// Complete AI routes with all endpoints
-
 import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import aiService from '../services/ai'; // Import your real AI service
 
-console.log('🤖 Loading complete AI routes...');
+console.log('🤖 Loading AI routes with real Gemini integration...');
 
 const router = Router();
 
@@ -76,7 +75,7 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
   }
 });
 
-// POST /api/ai/generate - Generate content using AI (requires auth)
+// POST /api/ai/generate - Generate content using REAL AI (requires auth)
 router.post('/generate', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     console.log('🤖 AI Generate Request:', req.body);
@@ -97,8 +96,8 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
       length = 'medium',
       audience,
       keywords,
-      includeOutline = false,
-      includeSEO = false
+      includeOutline = true,
+      includeSEO = true
     } = req.body;
 
     // Validate required fields
@@ -109,97 +108,99 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
       });
     }
 
-    // Generate comprehensive mock response
-    const mockResponse = {
-      title: `${type === 'ARTICLE' ? 'The Complete Guide to' : 'Understanding'} ${topic}`,
-      content: `<h2>Introduction</h2>
-<p>Welcome to this comprehensive guide about ${topic}. In today's rapidly evolving digital landscape, understanding ${topic} has become increasingly important for ${audience || 'professionals and enthusiasts alike'}.</p>
+    console.log('🎯 Generating REAL AI content for:', topic);
 
-<h2>What You Need to Know About ${topic}</h2>
-<p>This ${tone} overview will provide you with valuable insights and practical knowledge about ${topic}. Whether you're just getting started or looking to deepen your expertise, this content is designed to be both informative and actionable.</p>
-
-<h3>Key Benefits</h3>
-<ul>
-<li>Comprehensive understanding of ${topic} fundamentals</li>
-<li>Practical tips and strategies you can implement immediately</li>
-<li>Expert insights based on current industry best practices</li>
-<li>Real-world examples and case studies</li>
-</ul>
-
-<h2>Getting Started</h2>
-<p>The journey into ${topic} begins with understanding the core concepts and principles. This foundation will serve as your stepping stone to more advanced applications and techniques.</p>
-
-<h2>Best Practices and Implementation</h2>
-<p>When implementing ${topic} strategies, it's crucial to follow established best practices while adapting them to your specific needs and context. Consider these key factors for successful implementation:</p>
-
-<ul>
-<li>Start with clear objectives and measurable goals</li>
-<li>Invest time in proper planning and research</li>
-<li>Stay updated with industry trends and innovations</li>
-<li>Focus on continuous learning and improvement</li>
-</ul>
-
-<h2>Common Challenges and Solutions</h2>
-<p>While working with ${topic}, you may encounter various challenges. Here are some common issues and their solutions:</p>
-
-<h3>Challenge 1: Getting Started</h3>
-<p>Many beginners feel overwhelmed when first approaching ${topic}. The key is to start small and build your knowledge gradually.</p>
-
-<h3>Challenge 2: Staying Current</h3>
-<p>The field of ${topic} evolves rapidly. Make sure to follow industry leaders, read relevant publications, and participate in professional communities.</p>
-
-<h2>Tools and Resources</h2>
-<p>To succeed with ${topic}, consider leveraging these essential tools and resources that can streamline your workflow and enhance your results.</p>
-
-<h2>Conclusion</h2>
-<p>Mastering ${topic} is an ongoing journey that requires dedication, practice, and continuous learning. By applying the insights and strategies outlined in this guide, you'll be well-equipped to achieve success in your ${topic} endeavors. Remember that every expert was once a beginner, so stay persistent and keep learning.</p>`,
-      excerpt: `A comprehensive ${tone} guide about ${topic}, covering essential concepts, best practices, and practical implementation strategies for ${audience || 'modern professionals'}. Learn the fundamentals and advanced techniques you need to succeed.`,
-      suggestedTags: [
-        topic.toLowerCase().replace(/\s+/g, '-'),
-        type.toLowerCase(),
-        tone,
-        'guide',
-        'tutorial',
-        ...(keywords || [])
-      ],
-      wordCount: 420,
-      readingTime: 3,
-      ...(includeSEO && {
-        seoTitle: `${topic}: Complete ${length === 'long' ? 'In-Depth' : 'Essential'} Guide for ${new Date().getFullYear()}`,
-        seoDescription: `Master ${topic} with this ${tone} guide. Learn best practices, implementation strategies, and expert tips. Perfect for ${audience || 'professionals'} looking to excel.`
-      }),
-      ...(includeOutline && {
-        outline: [
-          'Introduction',
-          `What You Need to Know About ${topic}`,
-          'Key Benefits',
-          'Getting Started', 
-          'Best Practices and Implementation',
-          'Common Challenges and Solutions',
-          'Tools and Resources',
-          'Conclusion'
-        ]
-      })
+    // Use your REAL AI service instead of mock response
+    const generationRequest = {
+      type: type as 'POST' | 'ARTICLE' | 'NEWSLETTER' | 'PAGE',
+      topic,
+      tone: tone as 'professional' | 'casual' | 'friendly' | 'authoritative' | 'conversational',
+      length: length as 'short' | 'medium' | 'long',
+      audience,
+      keywords: keywords ? (Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim())) : undefined,
+      includeOutline,
+      includeSEO
     };
 
-    console.log('✅ AI content generated successfully (mock)');
+    // Generate content using your enhanced AI service
+    const aiResult = await aiService.generateContent(generationRequest);
+
+    console.log('✅ REAL AI content generated successfully');
+    if (aiResult.qualityScore) {
+      console.log('📊 Quality score:', aiResult.qualityScore);
+    }
+
+    // Validate content quality
+    const isValid = await aiService.validateContentBeforeSaving(aiResult, topic);
+
+    if (!isValid && aiResult.qualityScore && aiResult.qualityScore < 70) {
+      console.log('🔄 Content quality low, regenerating with enhanced prompt...');
+      
+      // Try again with more authoritative tone for better content
+      const betterRequest = {
+        ...generationRequest,
+        tone: 'authoritative' as const
+      };
+      
+      const betterResult = await aiService.generateContent(betterRequest);
+      
+      console.log('🎯 Regenerated content with quality score:', betterResult.qualityScore);
+      
+      return res.json({
+        success: true,
+        data: betterResult,
+        message: 'AI content generated successfully (regenerated for quality)',
+        metadata: {
+          qualityScore: betterResult.qualityScore,
+          researchSources: betterResult.researchSources?.length || 0,
+          regenerated: true
+        }
+      });
+    }
+
     res.json({
       success: true,
-      data: mockResponse
+      data: aiResult,
+      message: 'AI content generated successfully',
+      metadata: {
+        qualityScore: aiResult.qualityScore,
+        researchSources: aiResult.researchSources?.length || 0,
+        regenerated: false
+      }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ AI generation error:', error);
-    res.status(500).json({
+    
+    let message = 'Failed to generate AI content';
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      message = error.message;
+      
+      // Handle specific AI service errors
+      if (message.includes('API key') || message.includes('GEMINI_API_KEY')) {
+        message = 'AI service configuration error';
+        statusCode = 503; // Service Unavailable
+      } else if (message.includes('quota') || message.includes('rate limit')) {
+        message = 'AI service temporarily unavailable due to rate limits';
+        statusCode = 429; // Too Many Requests
+      }
+    }
+
+    res.status(statusCode).json({
       success: false,
-      message: 'AI content generation failed'
+      message: message,
+      error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     });
   }
 });
 
-// POST /api/ai/ideas - Generate content ideas (requires auth)
+// POST /api/ai/ideas - Generate content ideas using REAL AI (requires auth)
 router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
+    console.log('💡 AI Ideas Request:', req.body);
+    
     const { topic, count = 5 } = req.body;
 
     if (!topic) {
@@ -209,21 +210,8 @@ router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response)
       });
     }
 
-    // Generate contextual mock ideas
-    const ideaTemplates = [
-      `How to Get Started with ${topic}: A Beginner's Guide`,
-      `${count > 3 ? 'Top 10' : 'Essential'} ${topic} Best Practices You Should Know`,
-      `Common Mistakes to Avoid When Learning ${topic}`,
-      `Advanced ${topic} Techniques for Professionals`,
-      `The Future of ${topic}: Trends and Predictions for ${new Date().getFullYear() + 1}`,
-      `${topic} vs Alternatives: Which Should You Choose?`,
-      `Case Study: How ${topic} Transformed [Industry/Business]`,
-      `Building Your First ${topic} Project: Step-by-Step Tutorial`,
-      `${topic} Tools and Resources: Ultimate Comparison Guide`,
-      `Measuring Success: ${topic} Metrics That Actually Matter`
-    ];
-
-    const ideas = ideaTemplates.slice(0, count);
+    // Use real AI service for content ideas
+    const ideas = await aiService.generateContentIdeas(topic, Math.min(count, 10));
 
     res.json({
       success: true,
@@ -231,21 +219,30 @@ router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response)
         ideas,
         topic: topic,
         count: ideas.length
-      }
+      },
+      message: 'Content ideas generated successfully'
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ AI ideas generation error:', error);
+    
+    let message = 'Failed to generate content ideas';
+    if (error instanceof Error) {
+      message = error.message;
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Failed to generate content ideas'
+      message: message
     });
   }
 });
 
-// POST /api/ai/titles - Generate title variations (requires auth)
+// POST /api/ai/titles - Generate title variations using REAL AI (requires auth)
 router.post('/titles', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
+    console.log('📝 AI Titles Request:', req.body);
+    
     const { topic, count = 5 } = req.body;
 
     if (!topic) {
@@ -255,40 +252,39 @@ router.post('/titles', authenticateToken, async (req: AuthRequest, res: Response
       });
     }
 
-    const titleVariations = [
-      `The Ultimate Guide to ${topic}`,
-      `Master ${topic}: Everything You Need to Know`,
-      `${topic} Explained: A Complete Tutorial`,
-      `How to Excel at ${topic} in ${new Date().getFullYear()}`,
-      `${topic}: From Beginner to Expert`,
-      `Unlock the Power of ${topic}`,
-      `${topic} Made Simple: Your Complete Guide`,
-      `The ${topic} Handbook: Best Practices & Tips`,
-      `Transform Your Skills with ${topic}`,
-      `${topic}: The Essential Guide for Success`
-    ].slice(0, count);
+    // Use real AI service for title variations
+    const titles = await aiService.generateTitleVariations(topic, Math.min(count, 10));
 
     res.json({
       success: true,
       data: { 
-        titles: titleVariations,
+        titles,
         topic: topic,
-        count: titleVariations.length
-      }
+        count: titles.length
+      },
+      message: 'Title variations generated successfully'
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Title generation error:', error);
+    
+    let message = 'Failed to generate title variations';
+    if (error instanceof Error) {
+      message = error.message;
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Failed to generate titles'
+      message: message
     });
   }
 });
 
-// POST /api/ai/improve - Improve existing content (requires auth)
+// POST /api/ai/improve - Improve existing content using REAL AI (requires auth)
 router.post('/improve', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
+    console.log('✨ AI Improve Request:', req.body);
+    
     const { content, improvements } = req.body;
 
     if (!content) {
@@ -298,32 +294,41 @@ router.post('/improve', authenticateToken, async (req: AuthRequest, res: Respons
       });
     }
 
-    // Mock improvement - in real implementation, this would use Gemini AI
-    const improvedContent = `<div class="improved-content">
-<h2>Enhanced Content</h2>
-<p><strong>Original content improved with AI suggestions:</strong></p>
-${content}
-<p><em>Improvements applied: ${improvements?.join(', ') || 'Enhanced readability, improved flow, added engaging elements'}</em></p>
-</div>`;
+    const improvementsList = improvements || [
+      'Improve clarity and readability',
+      'Enhance SEO optimization',
+      'Add more specific examples',
+      'Remove generic filler content'
+    ];
+
+    // Use real AI service for content improvement
+    const improvedContent = await aiService.improveContent(content, improvementsList);
 
     res.json({
       success: true,
-      data: { 
+      data: {
+        originalContent: content,
         improvedContent,
-        improvements: improvements || ['Enhanced readability', 'Improved flow', 'Added engaging elements'],
-        wordCountIncrease: 25
-      }
+        improvements: improvementsList
+      },
+      message: 'Content improved successfully'
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Content improvement error:', error);
+    
+    let message = 'Failed to improve content';
+    if (error instanceof Error) {
+      message = error.message;
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Failed to improve content'
+      message: message
     });
   }
 });
 
-console.log('🤖 AI routes loaded successfully!');
+console.log('🤖 AI routes loaded successfully with REAL Gemini integration!');
 
 export default router;

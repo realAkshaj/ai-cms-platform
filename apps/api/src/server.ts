@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import contentRoutes from './routes/content';
-import aiRoutes from './routes/ai'; // 🤖 ADD THIS LINE
+import aiRoutes from './routes/ai'; // ADD THIS LINE
 
 // Load environment variables
 dotenv.config();
@@ -25,7 +25,6 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use('/api/content', contentRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -36,7 +35,7 @@ app.get('/health', async (req, res) => {
     res.status(200).json({
       status: 'OK',
       database: 'Connected',
-      ai: process.env.GEMINI_API_KEY ? 'Enabled' : 'Disabled', // 🤖 ADD THIS LINE
+      ai: process.env.GEMINI_API_KEY ? 'Enabled' : 'Disabled',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development'
     });
@@ -54,7 +53,7 @@ app.get('/health', async (req, res) => {
 app.get('/api/test', (req, res) => {
   res.json({ 
     message: 'API is working!',
-    features: ['Auth', 'Content', 'AI Generation'], // 🤖 MODIFY THIS LINE
+    features: ['Auth', 'Content', 'AI Generation'],
     timestamp: new Date().toISOString()
   });
 });
@@ -81,14 +80,15 @@ app.get('/api/db-test', async (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/ai', aiRoutes); // 🤖 ADD THIS LINE
+app.use('/api/content', contentRoutes);
+app.use('/api/ai', aiRoutes); // ADD THIS LINE
 
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,
-    availableRoutes: ['/api/auth', '/api/content', '/api/ai', '/health'] // 🤖 MODIFY THIS LINE
+    availableRoutes: ['/api/auth', '/api/content', '/api/ai', '/health'] // UPDATE THIS LINE
   });
 });
 
@@ -109,8 +109,8 @@ const startServer = async () => {
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log(`📚 API test: http://localhost:${PORT}/api/test`);
       console.log(`💾 Database test: http://localhost:${PORT}/api/db-test`);
-      console.log(`🤖 AI API: http://localhost:${PORT}/api/ai`); // 🤖 ADD THIS LINE
-      console.log(`🧠 Gemini AI: ${process.env.GEMINI_API_KEY ? 'Enabled' : 'Not configured'}`); // 🤖 ADD THIS LINE
+      console.log(`🤖 AI API: http://localhost:${PORT}/api/ai`); // ADD THIS LINE
+      console.log(`🧠 Gemini AI: ${process.env.GEMINI_API_KEY ? 'Enabled' : 'Not configured'}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {
