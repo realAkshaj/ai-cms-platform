@@ -332,9 +332,3 @@ Traditional CMS platforms feel outdated. They're either too simple for serious p
 MIT License - basically, use it however you want! Just give credit where it's due.
 
 ---
-
-<div align="center">
-
-**Building the future of content management, one feature at a time** ✨
-
-</div>
