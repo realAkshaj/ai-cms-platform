@@ -1,11 +1,23 @@
 // apps/api/src/routes/ai.ts
 import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import aiService from '../services/ai'; // Import your real AI service
 
-console.log('🤖 Loading AI routes with real Gemini integration...');
+console.log('🤖 Loading AI routes...');
 
 const router = Router();
+
+// Lazy-load AI service to avoid crashing if GEMINI_API_KEY is not set
+let aiService: any = null;
+function getAIService() {
+  if (!aiService) {
+    try {
+      aiService = require('../services/ai').default;
+    } catch (error) {
+      console.warn('⚠️ AI service not available:', error instanceof Error ? error.message : error);
+    }
+  }
+  return aiService;
+}
 
 // GET /api/ai/status - Check AI service status (no auth required)
 router.get('/status', async (req, res: Response) => {
@@ -122,8 +134,13 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
       includeSEO
     };
 
+    const ai = getAIService();
+    if (!ai) {
+      return res.status(503).json({ success: false, message: 'AI service not available' });
+    }
+
     // Generate content using your enhanced AI service
-    const aiResult = await aiService.generateContent(generationRequest);
+    const aiResult = await ai.generateContent(generationRequest);
 
     console.log('✅ REAL AI content generated successfully');
     if (aiResult.qualityScore) {
@@ -131,18 +148,18 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
     }
 
     // Validate content quality
-    const isValid = await aiService.validateContentBeforeSaving(aiResult, topic);
+    const isValid = await ai.validateContentBeforeSaving(aiResult, topic);
 
     if (!isValid && aiResult.qualityScore && aiResult.qualityScore < 70) {
       console.log('🔄 Content quality low, regenerating with enhanced prompt...');
-      
+
       // Try again with more authoritative tone for better content
       const betterRequest = {
         ...generationRequest,
         tone: 'authoritative' as const
       };
-      
-      const betterResult = await aiService.generateContent(betterRequest);
+
+      const betterResult = await ai.generateContent(betterRequest);
       
       console.log('🎯 Regenerated content with quality score:', betterResult.qualityScore);
       
@@ -210,8 +227,12 @@ router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response)
       });
     }
 
-    // Use real AI service for content ideas
-    const ideas = await aiService.generateContentIdeas(topic, Math.min(count, 10));
+    const ai = getAIService();
+    if (!ai) {
+      return res.status(503).json({ success: false, message: 'AI service not available' });
+    }
+
+    const ideas = await ai.generateContentIdeas(topic, Math.min(count, 10));
 
     res.json({
       success: true,
@@ -252,8 +273,12 @@ router.post('/titles', authenticateToken, async (req: AuthRequest, res: Response
       });
     }
 
-    // Use real AI service for title variations
-    const titles = await aiService.generateTitleVariations(topic, Math.min(count, 10));
+    const ai = getAIService();
+    if (!ai) {
+      return res.status(503).json({ success: false, message: 'AI service not available' });
+    }
+
+    const titles = await ai.generateTitleVariations(topic, Math.min(count, 10));
 
     res.json({
       success: true,
@@ -301,8 +326,12 @@ router.post('/improve', authenticateToken, async (req: AuthRequest, res: Respons
       'Remove generic filler content'
     ];
 
-    // Use real AI service for content improvement
-    const improvedContent = await aiService.improveContent(content, improvementsList);
+    const ai = getAIService();
+    if (!ai) {
+      return res.status(503).json({ success: false, message: 'AI service not available' });
+    }
+
+    const improvedContent = await ai.improveContent(content, improvementsList);
 
     res.json({
       success: true,

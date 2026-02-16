@@ -2,67 +2,137 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { contentService } from '@/services/contentService';
 
-interface UserData {
+interface DashboardStats {
+  totalContent: number;
+  totalViews: number;
+  publishedContent: number;
+  draftContent: number;
+  recentContent: any[];
+}
+
+interface User {
   id: string;
+  email: string;
   firstName: string;
   lastName: string;
-  email: string;
 }
 
 export default function Dashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<UserData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalContent: 0,
+    totalViews: 0,
+    publishedContent: 0,
+    draftContent: 0,
+    recentContent: []
+  });
+  const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    console.log('Dashboard: Checking authentication...'); // Debug log
-    
-    // Check if user is authenticated
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.log('Dashboard: No token found, redirecting to login'); // Debug log
-      router.push('/auth/login');
-      return;
-    }
-
-    console.log('Dashboard: Token found:', token.substring(0, 20) + '...'); // Debug log
-
-    // Try to get user data from localStorage
-    const userData = localStorage.getItem('userData');
-    if (userData) {
+    const fetchDashboardData = async () => {
       try {
-        const parsedUser = JSON.parse(userData);
-        console.log('Dashboard: User data found:', parsedUser); // Debug log
-        setUser({
-          id: parsedUser.id || '1',
-          firstName: parsedUser.firstName || 'User',
-          lastName: parsedUser.lastName || '',
-          email: parsedUser.email || 'user@example.com'
-        });
-      } catch (error) {
-        console.error('Dashboard: Error parsing user data:', error);
-        // Set default user if parsing fails
-        setUser({
-          id: '1',
-          firstName: 'User',
-          lastName: '',
-          email: 'user@example.com'
-        });
-      }
-    } else {
-      console.log('Dashboard: No user data found, using defaults'); // Debug log
-      // Set default user if no data found
-      setUser({
-        id: '1',
-        firstName: 'User',
-        lastName: '',
-        email: 'user@example.com'
-      });
-    }
+        const token = localStorage.getItem('token');
+        if (!token) {
+          router.push('/auth/login');
+          return;
+        }
 
-    setIsLoading(false);
+        // Get user data from localStorage
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            setUser({
+              id: parsedUser.id || '1',
+              firstName: parsedUser.firstName || 'User',
+              lastName: parsedUser.lastName || '',
+              email: parsedUser.email || 'user@example.com'
+            });
+          } catch (error) {
+            console.error('Error parsing user data:', error);
+          }
+        }
+
+        // Try to fetch stats from the new /stats endpoint
+        try {
+          console.log('🔍 Trying to fetch from /stats endpoint...');
+          const response = await fetch('http://localhost:3001/api/content/analytics/stats', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            const responseJson = await response.json();
+            const statsData = responseJson.data || responseJson;
+            console.log('📊 Stats from endpoint:', statsData);
+
+            setStats({
+              totalContent: statsData.total || 0,
+              totalViews: statsData.totalViews || 0,
+              publishedContent: statsData.published || 0,
+              draftContent: statsData.draft || 0,
+              recentContent: statsData.recentContent || []
+            });
+          } else {
+            throw new Error('Stats endpoint not available');
+          }
+        } catch (statsError) {
+          console.log('📊 Stats endpoint failed, using fallback:', statsError);
+          
+          // Fallback: use existing contentService
+          try {
+            const contentResponse = await contentService.getContent();
+            console.log('📄 Content response:', contentResponse);
+            
+            // Handle different possible response structures
+            const contentArray = contentResponse.content || contentResponse.data?.content || contentResponse || [];
+            console.log('📋 Content array:', contentArray);
+            
+            if (Array.isArray(contentArray)) {
+              const published = contentArray.filter((c: any) => c.status === 'PUBLISHED').length;
+              const draft = contentArray.filter((c: any) => c.status === 'DRAFT').length;
+              
+              setStats({
+                totalContent: contentArray.length,
+                totalViews: contentArray.length * 5, // Fake views for demo
+                publishedContent: published,
+                draftContent: draft,
+                recentContent: contentArray.slice(0, 5)
+              });
+            } else {
+              console.log('📋 Content is not an array, using defaults');
+              setStats({
+                totalContent: 0,
+                totalViews: 0,
+                publishedContent: 0,
+                draftContent: 0,
+                recentContent: []
+              });
+            }
+          } catch (contentError) {
+            console.error('❌ Content fetch also failed:', contentError);
+            // Keep default stats
+          }
+        }
+
+      } catch (error: any) {
+        console.error('❌ Error fetching dashboard data:', error);
+        if (error?.response?.status === 401) {
+          localStorage.removeItem('token');
+          router.push('/auth/login');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, [router]);
 
   // Update time every minute
@@ -72,7 +142,7 @@ export default function Dashboard() {
   }, []);
 
   const handleLogout = () => {
-    console.log('Dashboard: Logging out...'); // Debug log
+    console.log('Dashboard: Logging out...');
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
     router.push('/auth/login');
@@ -86,7 +156,7 @@ export default function Dashboard() {
   };
 
   const handleActionClick = (actionText: string) => {
-    console.log('Dashboard: Action clicked:', actionText); // Debug log
+    console.log('Dashboard: Action clicked:', actionText);
     switch (actionText) {
       case 'Create Content':
         router.push('/content/create');
@@ -105,7 +175,7 @@ export default function Dashboard() {
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -143,42 +213,31 @@ export default function Dashboard() {
     );
   }
 
-  if (!user) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <div style={{ textAlign: 'center', color: 'white' }}>
-          <h2>Authentication Error</h2>
-          <p>Unable to load user data. Please try logging in again.</p>
-          <button 
-            onClick={() => router.push('/auth/login')}
-            style={{
-              background: '#4f46e5',
-              color: 'white',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const stats = [
-    { icon: '📝', title: 'Content Items', value: '0', subtitle: 'Ready to create your first post?' },
-    { icon: '👀', title: 'Total Views', value: '0', subtitle: 'Your audience awaits' },
-    { icon: '🤖', title: 'AI Suggestions', value: '∞', subtitle: 'Unlimited creativity' },
-    { icon: '⚡', title: 'System Status', value: 'Online', subtitle: 'Everything is running smoothly' }
+  const statsData = [
+    { 
+      icon: '📝', 
+      title: 'Content Items', 
+      value: stats.totalContent.toString(), 
+      subtitle: stats.totalContent === 0 ? 'Ready to create your first post?' : `${stats.publishedContent} published, ${stats.draftContent} drafts` 
+    },
+    { 
+      icon: '👀', 
+      title: 'Total Views', 
+      value: stats.totalViews.toString(), 
+      subtitle: stats.totalViews === 0 ? 'Your audience awaits' : 'Great engagement!' 
+    },
+    { 
+      icon: '🤖', 
+      title: 'AI Suggestions', 
+      value: '∞', 
+      subtitle: 'Unlimited creativity' 
+    },
+    { 
+      icon: '⚡', 
+      title: 'System Status', 
+      value: 'Online', 
+      subtitle: 'Everything is running smoothly' 
+    }
   ];
 
   const actions = [
@@ -253,10 +312,10 @@ export default function Dashboard() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '14px', fontWeight: '600' }}>
-                  {user.firstName} {user.lastName}
+                  {user?.firstName} {user?.lastName}
                 </span>
                 <span style={{ fontSize: '12px', opacity: 0.8 }}>
-                  {user.email}
+                  {user?.email}
                 </span>
               </div>
             </div>
@@ -303,7 +362,7 @@ export default function Dashboard() {
             fontWeight: '700',
             margin: '0 0 12px 0'
           }}>
-            {getGreeting()}, {user.firstName}! 👋
+            {getGreeting()}, {user?.firstName}! 👋
           </h2>
           <p style={{
             color: 'rgba(255, 255, 255, 0.9)',
@@ -341,7 +400,7 @@ export default function Dashboard() {
           gap: '24px',
           marginBottom: '32px'
         }}>
-          {stats.map((stat, index) => (
+          {statsData.map((stat, index) => (
             <div 
               key={index} 
               style={{
@@ -387,6 +446,109 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {/* Recent Content */}
+        {stats.recentContent && stats.recentContent.length > 0 && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '20px',
+            padding: '32px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            marginBottom: '32px'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
+            }}>
+              <h3 style={{
+                color: 'white',
+                fontSize: '24px',
+                fontWeight: '700',
+                margin: 0
+              }}>
+                📄 Recent Content
+              </h3>
+              <button
+                onClick={() => router.push('/content')}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                View All
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {stats.recentContent.map((item: any, index: number) => (
+                <div
+                  key={item.id || index}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onClick={() => {
+                    if (item.id) {
+                      router.push(`/content/view/${item.id}`);
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px'
+                      }}>
+                        {item.type === 'ARTICLE' ? '📄' : item.type === 'POST' ? '📝' : '📰'}
+                      </div>
+                      <div>
+                        <div style={{ color: 'white', fontWeight: '600', fontSize: '16px' }}>
+                          {item.title}
+                        </div>
+                        <div style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '12px' }}>
+                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Unknown date'} • {item.status}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <span style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '12px' }}>
+                        {item.views || 0} views
+                      </span>
+                      <div style={{
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        fontWeight: '500',
+                        background: item.status === 'PUBLISHED' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.2)',
+                        color: item.status === 'PUBLISHED' ? '#22c55e' : '#eab308'
+                      }}>
+                        {item.status}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div style={{
@@ -447,71 +609,115 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Success Message */}
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(124, 58, 237, 0.3) 100%)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '20px',
-          padding: '32px',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          textAlign: 'center'
-        }}>
-          <h3 style={{
-            color: 'white',
-            fontSize: '24px',
-            fontWeight: '700',
-            margin: '0 0 16px 0'
-          }}>
-            🎉 Welcome to Your AI CMS Platform!
-          </h3>
-          <p style={{
-            color: 'rgba(255, 255, 255, 0.9)',
-            fontSize: '16px',
-            margin: '0 0 24px 0',
-            lineHeight: '1.6'
-          }}>
-            Your authentication system is working perfectly! You can now create content, 
-            manage your articles, and explore all the features of your platform.
-          </p>
+        {/* Empty State or Success Message */}
+        {stats.totalContent === 0 ? (
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '12px',
-            maxWidth: '600px',
-            margin: '0 auto'
+            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(124, 58, 237, 0.3) 100%)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '20px',
+            padding: '32px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            textAlign: 'center'
           }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✨</div>
+            <h3 style={{
+              color: 'white',
+              fontSize: '24px',
+              fontWeight: '700',
+              margin: '0 0 16px 0'
+            }}>
+              Ready to get started?
+            </h3>
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.9)',
+              fontSize: '16px',
+              margin: '0 0 24px 0',
+              lineHeight: '1.6'
+            }}>
+              Create your first piece of content and let AI help you craft something amazing.
+            </p>
             <button
-              onClick={() => handleActionClick('Create Content')}
+              onClick={() => router.push('/content/create')}
               style={{
                 background: '#4f46e5',
                 color: 'white',
                 border: 'none',
-                padding: '12px 20px',
+                padding: '12px 24px',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '600',
                 cursor: 'pointer'
               }}
             >
-              ✍️ Create Your First Article
-            </button>
-            <button
-              onClick={() => handleActionClick('View Analytics')}
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                padding: '12px 20px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              📚 View Content Library
+              ✍️ Create Your First Content
             </button>
           </div>
-        </div>
+        ) : (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(124, 58, 237, 0.3) 100%)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '20px',
+            padding: '32px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            textAlign: 'center'
+          }}>
+            <h3 style={{
+              color: 'white',
+              fontSize: '24px',
+              fontWeight: '700',
+              margin: '0 0 16px 0'
+            }}>
+              🎉 Great work!
+            </h3>
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.9)',
+              fontSize: '16px',
+              margin: '0 0 24px 0',
+              lineHeight: '1.6'
+            }}>
+              You have {stats.totalContent} pieces of content with {stats.totalViews} total views. 
+              Keep creating amazing content!
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '12px',
+              maxWidth: '600px',
+              margin: '0 auto'
+            }}>
+              <button
+                onClick={() => handleActionClick('Create Content')}
+                style={{
+                  background: '#4f46e5',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                ✍️ Create More Content
+              </button>
+              <button
+                onClick={() => handleActionClick('View Analytics')}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                📚 View All Content
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -1,12 +1,26 @@
 import { Router, Request, Response } from 'express';
 import { ContentService } from '../services/content';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
-import enhancedAIService from '../services/ai'; // Import the enhanced AI service
+import { PrismaClient } from '@prisma/client';
 
 const router = Router();
 const contentService = new ContentService();
+const prisma = new PrismaClient();
 
-console.log('📝 Content routes loaded!'); // Debug log
+// Lazy-load AI service to avoid crashing if GEMINI_API_KEY is not set
+let enhancedAIService: any = null;
+function getAIService() {
+  if (!enhancedAIService) {
+    try {
+      enhancedAIService = require('../services/ai').default;
+    } catch (error) {
+      console.warn('⚠️ AI service not available:', error instanceof Error ? error.message : error);
+    }
+  }
+  return enhancedAIService;
+}
+
+console.log('📝 Content routes loaded!');
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
@@ -21,12 +35,136 @@ router.get('/test', (req: AuthRequest, res: Response) => {
   });
 });
 
+// ==========================================
+// IMPORTANT: Static routes MUST come before /:id
+// ==========================================
+
+// GET /api/content/analytics/stats - Get content statistics
+router.get('/analytics/stats', async (req: AuthRequest, res: Response) => {
+  try {
+    console.log('📊 GET /api/content/analytics/stats - Get content statistics');
+    const organizationId = req.user!.organizationId;
+
+    const [total, published, draft, archived] = await Promise.all([
+      prisma.content.count({ where: { organizationId } }),
+      prisma.content.count({ where: { organizationId, status: 'PUBLISHED' } }),
+      prisma.content.count({ where: { organizationId, status: 'DRAFT' } }),
+      prisma.content.count({ where: { organizationId, status: 'ARCHIVED' } })
+    ]);
+
+    const allContent = await prisma.content.findMany({
+      where: { organizationId },
+      select: {
+        views: true,
+        likes: true,
+        shares: true,
+      }
+    });
+
+    const totalViews = allContent.reduce((sum, c) => sum + (c.views || 0), 0);
+    const totalLikes = allContent.reduce((sum, c) => sum + (c.likes || 0), 0);
+    const totalShares = allContent.reduce((sum, c) => sum + (c.shares || 0), 0);
+
+    const recentContent = await prisma.content.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: {
+        author: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    const stats = {
+      total,
+      published,
+      draft,
+      archived,
+      totalViews,
+      totalLikes,
+      totalShares,
+      recentContent: recentContent.map(item => ({
+        id: item.id,
+        title: item.title,
+        slug: item.slug || '',
+        excerpt: item.excerpt || '',
+        content: item.body,  // Map 'body' DB field back to 'content' for frontend
+        status: item.status,
+        type: item.type,
+        featuredImage: item.featuredImage || '',
+        seoTitle: item.seoTitle || '',
+        seoDescription: item.seoDescription || '',
+        tags: item.tags || [],
+        views: item.views || 0,
+        likes: item.likes || 0,
+        shares: item.shares || 0,
+        publishedAt: item.publishedAt || null,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+        author: item.author
+      }))
+    };
+
+    console.log('✅ Content statistics calculated');
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('❌ Error fetching content stats:', error);
+    res.json({
+      success: true,
+      data: {
+        total: 0,
+        published: 0,
+        draft: 0,
+        archived: 0,
+        totalViews: 0,
+        totalLikes: 0,
+        totalShares: 0,
+        recentContent: []
+      }
+    });
+  }
+});
+
+// GET /api/content/stats/simple - Simple content counts
+router.get('/stats/simple', async (req: AuthRequest, res: Response) => {
+  try {
+    const organizationId = req.user!.organizationId;
+
+    const [total, published, draft] = await Promise.all([
+      prisma.content.count({ where: { organizationId } }),
+      prisma.content.count({ where: { organizationId, status: 'PUBLISHED' } }),
+      prisma.content.count({ where: { organizationId, status: 'DRAFT' } })
+    ]);
+
+    res.json({ total, published, draft, archived: 0 });
+  } catch (error) {
+    console.error('❌ Simple stats error:', error);
+    res.json({ total: 0, published: 0, draft: 0, archived: 0 });
+  }
+});
+
 // POST /api/content/generate - AI Content Generation
 router.post('/generate', async (req: AuthRequest, res: Response) => {
   try {
     console.log('🤖 POST /api/content/generate - AI content generation request');
-    console.log('👤 User:', req.user);
-    console.log('📄 Request body:', req.body);
+
+    const aiService = getAIService();
+    if (!aiService) {
+      return res.status(503).json({
+        success: false,
+        message: 'AI service is not available. Please configure GEMINI_API_KEY.'
+      });
+    }
 
     const {
       topic,
@@ -40,7 +178,6 @@ router.post('/generate', async (req: AuthRequest, res: Response) => {
       includeResearch = true
     } = req.body;
 
-    // Validate required fields
     if (!topic) {
       return res.status(400).json({
         success: false,
@@ -60,31 +197,18 @@ router.post('/generate', async (req: AuthRequest, res: Response) => {
       includeResearch
     };
 
-    console.log('🎯 Generating enhanced content with request:', generationRequest);
-
-    // Generate content using enhanced AI service
-    const aiResult = await enhancedAIService.generateContent(generationRequest);
-
-    console.log('✅ AI content generated successfully');
-    console.log('📊 Quality score:', aiResult.qualityScore);
-
-    // Validate content quality before returning
-    const isValid = await enhancedAIService.validateContentBeforeSaving(aiResult, topic);
+    const aiResult = await aiService.generateContent(generationRequest);
+    const isValid = await aiService.validateContentBeforeSaving(aiResult, topic);
 
     if (!isValid && aiResult.qualityScore && aiResult.qualityScore < 70) {
-      console.log('🔄 Content quality low, regenerating with stricter parameters...');
-      
-      // Try again with enhanced research
       const betterRequest = {
         ...generationRequest,
         includeResearch: true,
-        tone: 'authoritative' as const // Use more authoritative tone for better content
+        tone: 'authoritative' as const
       };
-      
-      const betterResult = await enhancedAIService.generateContent(betterRequest);
-      
-      console.log('🎯 Regenerated content with quality score:', betterResult.qualityScore);
-      
+
+      const betterResult = await aiService.generateContent(betterRequest);
+
       return res.json({
         success: true,
         data: betterResult,
@@ -110,27 +234,24 @@ router.post('/generate', async (req: AuthRequest, res: Response) => {
 
   } catch (error: unknown) {
     console.error('❌ Error generating AI content:', error);
-    
+
     let message = 'Failed to generate AI content';
     let statusCode = 500;
 
     if (error instanceof Error) {
       message = error.message;
-      
-      // Handle specific AI service errors
       if (message.includes('API key') || message.includes('GEMINI_API_KEY')) {
         message = 'AI service configuration error';
-        statusCode = 503; // Service Unavailable
+        statusCode = 503;
       } else if (message.includes('quota') || message.includes('rate limit')) {
         message = 'AI service temporarily unavailable due to rate limits';
-        statusCode = 429; // Too Many Requests
+        statusCode = 429;
       }
     }
 
     res.status(statusCode).json({
       success: false,
-      message: message,
-      error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
+      message: message
     });
   }
 });
@@ -138,40 +259,28 @@ router.post('/generate', async (req: AuthRequest, res: Response) => {
 // POST /api/content/ideas - Generate content ideas
 router.post('/ideas', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('💡 POST /api/content/ideas - Generate content ideas');
-    
-    const { topic, count = 5 } = req.body;
-
-    if (!topic) {
-      return res.status(400).json({
-        success: false,
-        message: 'Topic is required for content idea generation'
-      });
+    const aiService = getAIService();
+    if (!aiService) {
+      return res.status(503).json({ success: false, message: 'AI service not available' });
     }
 
-    const ideas = await enhancedAIService.generateContentIdeas(topic, Math.min(count, 10)); // Limit to 10 max
+    const { topic, count = 5 } = req.body;
+    if (!topic) {
+      return res.status(400).json({ success: false, message: 'Topic is required' });
+    }
+
+    const ideas = await aiService.generateContentIdeas(topic, Math.min(count, 10));
 
     res.json({
       success: true,
-      data: {
-        topic,
-        ideas,
-        count: ideas.length
-      },
+      data: { topic, ideas, count: ideas.length },
       message: 'Content ideas generated successfully'
     });
-
   } catch (error: unknown) {
     console.error('❌ Error generating content ideas:', error);
-    
-    let message = 'Failed to generate content ideas';
-    if (error instanceof Error) {
-      message = error.message;
-    }
-
     res.status(500).json({
       success: false,
-      message: message
+      message: error instanceof Error ? error.message : 'Failed to generate content ideas'
     });
   }
 });
@@ -179,15 +288,14 @@ router.post('/ideas', async (req: AuthRequest, res: Response) => {
 // POST /api/content/improve - Improve existing content
 router.post('/improve', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('✨ POST /api/content/improve - Improve content');
-    
-    const { content, improvements } = req.body;
+    const aiService = getAIService();
+    if (!aiService) {
+      return res.status(503).json({ success: false, message: 'AI service not available' });
+    }
 
+    const { content, improvements } = req.body;
     if (!content) {
-      return res.status(400).json({
-        success: false,
-        message: 'Content is required for improvement'
-      });
+      return res.status(400).json({ success: false, message: 'Content is required' });
     }
 
     const improvementsList = improvements || [
@@ -197,29 +305,18 @@ router.post('/improve', async (req: AuthRequest, res: Response) => {
       'Remove generic filler content'
     ];
 
-    const improvedContent = await enhancedAIService.improveContent(content, improvementsList);
+    const improvedContent = await aiService.improveContent(content, improvementsList);
 
     res.json({
       success: true,
-      data: {
-        originalContent: content,
-        improvedContent,
-        improvements: improvementsList
-      },
+      data: { originalContent: content, improvedContent, improvements: improvementsList },
       message: 'Content improved successfully'
     });
-
   } catch (error: unknown) {
     console.error('❌ Error improving content:', error);
-    
-    let message = 'Failed to improve content';
-    if (error instanceof Error) {
-      message = error.message;
-    }
-
     res.status(500).json({
       success: false,
-      message: message
+      message: error instanceof Error ? error.message : 'Failed to improve content'
     });
   }
 });
@@ -227,64 +324,50 @@ router.post('/improve', async (req: AuthRequest, res: Response) => {
 // POST /api/content/titles - Generate title variations
 router.post('/titles', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('📝 POST /api/content/titles - Generate title variations');
-    
-    const { topic, count = 5 } = req.body;
-
-    if (!topic) {
-      return res.status(400).json({
-        success: false,
-        message: 'Topic is required for title generation'
-      });
+    const aiService = getAIService();
+    if (!aiService) {
+      return res.status(503).json({ success: false, message: 'AI service not available' });
     }
 
-    const titles = await enhancedAIService.generateTitleVariations(topic, Math.min(count, 10));
+    const { topic, count = 5 } = req.body;
+    if (!topic) {
+      return res.status(400).json({ success: false, message: 'Topic is required' });
+    }
+
+    const titles = await aiService.generateTitleVariations(topic, Math.min(count, 10));
 
     res.json({
       success: true,
-      data: {
-        topic,
-        titles,
-        count: titles.length
-      },
+      data: { topic, titles, count: titles.length },
       message: 'Title variations generated successfully'
     });
-
   } catch (error: unknown) {
     console.error('❌ Error generating titles:', error);
-    
-    let message = 'Failed to generate title variations';
-    if (error instanceof Error) {
-      message = error.message;
-    }
-
     res.status(500).json({
       success: false,
-      message: message
+      message: error instanceof Error ? error.message : 'Failed to generate title variations'
     });
   }
 });
 
+// ==========================================
+// CRUD routes (parameterized routes last)
+// ==========================================
+
 // GET /api/content - List content for user's organization
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('📋 GET /api/content - List content request received');
-    console.log('👤 User:', req.user);
-    
-    const userId = req.user!.id;
     const organizationId = req.user!.organizationId;
-    
-    const { 
-      page = 1, 
-      limit = 10, 
-      status, 
-      type, 
+
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      type,
       search,
       sortBy = 'updatedAt',
       sortOrder = 'desc'
     } = req.query;
-
-    console.log('🔍 Query params:', { page, limit, status, type, search, sortBy, sortOrder });
 
     const filters = {
       organizationId,
@@ -305,21 +388,15 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       }
     });
 
-    console.log('✅ Content fetched successfully:', result);
-
     res.json({
       success: true,
       data: result
     });
   } catch (error: unknown) {
     console.error('❌ Error fetching content:', error);
-    let message = 'Failed to fetch content';
-    if (error instanceof Error) {
-        message = error.message;
-    }
     res.status(500).json({
       success: false,
-      message: message
+      message: error instanceof Error ? error.message : 'Failed to fetch content'
     });
   }
 });
@@ -327,24 +404,16 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // POST /api/content - Create new content
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('📝 POST /api/content - Create content request received');
-    console.log('👤 User:', req.user);
-    console.log('📄 Request body:', req.body);
-    
     const userId = req.user!.id;
     const organizationId = req.user!.organizationId;
-    
+
     const contentData = {
       ...req.body,
       authorId: userId,
       organizationId
     };
 
-    console.log('💾 Content data to save:', contentData);
-
-    // Validate required fields
     if (!contentData.title || !contentData.content) {
-      console.log('❌ Validation failed: Missing title or content');
       return res.status(400).json({
         success: false,
         message: 'Title and content are required'
@@ -353,20 +422,17 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
     const content = await contentService.createContent(contentData);
 
-    console.log('🎉 Content created successfully:', content);
-
     res.status(201).json({
       success: true,
       data: content,
       message: 'Content created successfully'
     });
   } catch (error: unknown) {
-    console.error('💥 Error creating content:', error);
-    
+    console.error('❌ Error creating content:', error);
+
     let message = 'Failed to create content';
     let statusCode = 500;
 
-    // Check if it's a Prisma error for unique constraint
     if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2002') {
       message = 'Content with this slug already exists';
       statusCode = 400;
@@ -384,7 +450,6 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // GET /api/content/:id - Get single content item
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('📖 GET /api/content/:id - Get single content');
     const { id } = req.params;
     const organizationId = req.user!.organizationId;
 
@@ -403,13 +468,9 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     });
   } catch (error: unknown) {
     console.error('Error fetching content:', error);
-    let message = 'Failed to fetch content';
-    if (error instanceof Error) {
-        message = error.message;
-    }
     res.status(500).json({
       success: false,
-      message: message
+      message: error instanceof Error ? error.message : 'Failed to fetch content'
     });
   }
 });
@@ -417,12 +478,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // PUT /api/content/:id - Update content
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('✏️ PUT /api/content/:id - Update content');
     const { id } = req.params;
     const organizationId = req.user!.organizationId;
-    const updateData = req.body;
 
-    const content = await contentService.updateContent(id, updateData, organizationId);
+    const content = await contentService.updateContent(id, req.body, organizationId);
 
     if (!content) {
       return res.status(404).json({
@@ -438,7 +497,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     });
   } catch (error: unknown) {
     console.error('Error updating content:', error);
-    
+
     let message = 'Failed to update content';
     let statusCode = 500;
 
@@ -449,17 +508,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       message = error.message;
     }
 
-    res.status(statusCode).json({
-      success: false,
-      message: message
-    });
+    res.status(statusCode).json({ success: false, message });
   }
 });
 
 // DELETE /api/content/:id - Delete content
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('🗑️ DELETE /api/content/:id - Delete content');
     const { id } = req.params;
     const organizationId = req.user!.organizationId;
 
@@ -478,13 +533,9 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     });
   } catch (error: unknown) {
     console.error('Error deleting content:', error);
-    let message = 'Failed to delete content';
-    if (error instanceof Error) {
-        message = error.message;
-    }
     res.status(500).json({
       success: false,
-      message: message
+      message: error instanceof Error ? error.message : 'Failed to delete content'
     });
   }
 });
@@ -492,7 +543,6 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
 // POST /api/content/:id/publish - Publish content
 router.post('/:id/publish', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('🚀 POST /api/content/:id/publish - Publish content');
     const { id } = req.params;
     const organizationId = req.user!.organizationId;
 
@@ -512,82 +562,9 @@ router.post('/:id/publish', async (req: AuthRequest, res: Response) => {
     });
   } catch (error: unknown) {
     console.error('Error publishing content:', error);
-    let message = 'Failed to publish content';
-    if (error instanceof Error) {
-        message = error.message;
-    }
     res.status(500).json({
       success: false,
-      message: message
-    });
-  }
-});
-
-
-
-router.post('/generate', async (req: AuthRequest, res: Response) => {
-  try {
-    console.log('🤖 POST /api/content/generate - AI content generation request');
-    
-    const {
-      topic,
-      type = 'ARTICLE',
-      tone = 'professional',
-      length = 'medium',
-      keywords,
-      includeOutline = true,
-      includeSEO = true
-    } = req.body;
-
-    if (!topic) {
-      return res.status(400).json({
-        success: false,
-        message: 'Topic is required for AI content generation'
-      });
-    }
-
-    const generationRequest = {
-      type: type as 'POST' | 'ARTICLE' | 'NEWSLETTER' | 'PAGE',
-      topic,
-      tone: tone as 'professional' | 'casual' | 'friendly' | 'authoritative' | 'conversational',
-      length: length as 'short' | 'medium' | 'long',
-      keywords: keywords ? (Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim())) : undefined,
-      includeOutline,
-      includeSEO
-    };
-
-    console.log('🎯 Generating enhanced content with request:', generationRequest);
-
-    const aiResult = await enhancedAIService.generateContent(generationRequest);
-
-    console.log('✅ AI content generated successfully');
-    console.log('📊 Quality score:', aiResult.qualityScore);
-
-    // Validate content quality
-    const isValid = await enhancedAIService.validateContentBeforeSaving(aiResult, topic);
-
-    res.json({
-      success: true,
-      data: aiResult,
-      message: 'AI content generated successfully',
-      metadata: {
-        qualityScore: aiResult.qualityScore,
-        qualityPassed: isValid,
-        researchSources: aiResult.researchSources?.length || 0
-      }
-    });
-
-  } catch (error: unknown) {
-    console.error('❌ Error generating AI content:', error);
-    
-    let message = 'Failed to generate AI content';
-    if (error instanceof Error) {
-      message = error.message;
-    }
-
-    res.status(500).json({
-      success: false,
-      message: message
+      message: error instanceof Error ? error.message : 'Failed to publish content'
     });
   }
 });

@@ -16,7 +16,7 @@ export const apiClient: AxiosInstance = axios.create({
 export const tokenManager = {
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
+    return localStorage.getItem('token') || localStorage.getItem('accessToken');
   },
 
   setToken(token: string): void {
@@ -26,8 +26,10 @@ export const tokenManager = {
 
   removeToken(): void {
     if (typeof window === 'undefined') return;
+    localStorage.removeItem('token');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('userData');
   },
 
   getUser(): any | null {
