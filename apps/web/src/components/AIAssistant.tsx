@@ -241,13 +241,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
       right: '0',
       width: '450px',
       height: '100vh',
-      background: 'rgba(255, 255, 255, 0.95)',
-      backdropFilter: 'blur(20px)',
-      borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
+      background: '#ffffff',
+      borderLeft: '1px solid #e5e7eb',
+      boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.15)',
       zIndex: 1000,
       display: 'flex',
       flexDirection: 'column',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      isolation: 'isolate'
     }}>
       {/* Header */}
       <div style={{

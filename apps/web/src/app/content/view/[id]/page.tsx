@@ -459,7 +459,7 @@ export default function ContentViewPage() {
             fontSize: '18px',
             lineHeight: '1.8'
           }} 
-          dangerouslySetInnerHTML={{ __html: content.content }}
+          dangerouslySetInnerHTML={{ __html: (content as any).body || content.content || '' }}
           />
 
           {/* Tags */}
