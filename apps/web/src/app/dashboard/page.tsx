@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { contentService } from '@/services/contentService';
+import { API_URL } from '../../lib/config';
 
 interface DashboardStats {
   totalContent: number;
@@ -41,7 +43,6 @@ export default function Dashboard() {
           return;
         }
 
-        // Get user data from localStorage
         const userData = localStorage.getItem('userData');
         if (userData) {
           try {
@@ -57,10 +58,8 @@ export default function Dashboard() {
           }
         }
 
-        // Try to fetch stats from the new /stats endpoint
         try {
-          console.log('🔍 Trying to fetch from /stats endpoint...');
-          const response = await fetch('http://localhost:3001/api/content/analytics/stats', {
+          const response = await fetch('${API_URL}/api/content/analytics/stats', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -70,7 +69,6 @@ export default function Dashboard() {
           if (response.ok) {
             const responseJson = await response.json();
             const statsData = responseJson.data || responseJson;
-            console.log('📊 Stats from endpoint:', statsData);
 
             setStats({
               totalContent: statsData.total || 0,
@@ -83,46 +81,30 @@ export default function Dashboard() {
             throw new Error('Stats endpoint not available');
           }
         } catch (statsError) {
-          console.log('📊 Stats endpoint failed, using fallback:', statsError);
-          
-          // Fallback: use existing contentService
+          console.log('Stats endpoint failed, using fallback:', statsError);
           try {
             const contentResponse = await contentService.getContent();
-            console.log('📄 Content response:', contentResponse);
-            
-            // Handle different possible response structures
-            const contentArray = contentResponse.content || contentResponse.data?.content || contentResponse || [];
-            console.log('📋 Content array:', contentArray);
-            
+            const contentArray = contentResponse.content || (contentResponse as any).data?.content || contentResponse || [];
+
             if (Array.isArray(contentArray)) {
               const published = contentArray.filter((c: any) => c.status === 'PUBLISHED').length;
               const draft = contentArray.filter((c: any) => c.status === 'DRAFT').length;
-              
+
               setStats({
                 totalContent: contentArray.length,
-                totalViews: contentArray.length * 5, // Fake views for demo
+                totalViews: contentArray.length * 5,
                 publishedContent: published,
                 draftContent: draft,
                 recentContent: contentArray.slice(0, 5)
               });
-            } else {
-              console.log('📋 Content is not an array, using defaults');
-              setStats({
-                totalContent: 0,
-                totalViews: 0,
-                publishedContent: 0,
-                draftContent: 0,
-                recentContent: []
-              });
             }
           } catch (contentError) {
-            console.error('❌ Content fetch also failed:', contentError);
-            // Keep default stats
+            console.error('Content fetch also failed:', contentError);
           }
         }
 
       } catch (error: any) {
-        console.error('❌ Error fetching dashboard data:', error);
+        console.error('Error fetching dashboard data:', error);
         if (error?.response?.status === 401) {
           localStorage.removeItem('token');
           router.push('/auth/login');
@@ -135,14 +117,12 @@ export default function Dashboard() {
     fetchDashboardData();
   }, [router]);
 
-  // Update time every minute
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
   const handleLogout = () => {
-    console.log('Dashboard: Logging out...');
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
     router.push('/auth/login');
@@ -155,110 +135,56 @@ export default function Dashboard() {
     return 'Good evening';
   };
 
-  const handleActionClick = (actionText: string) => {
-    console.log('Dashboard: Action clicked:', actionText);
-    switch (actionText) {
-      case 'Create Content':
-        router.push('/content/create');
-        break;
-      case 'View Analytics':
-        router.push('/content');
-        break;
-      case 'Customize Design':
-        alert('Design customization coming soon! 🎨');
-        break;
-      case 'Settings':
-        alert('Settings page coming soon! ⚙️');
-        break;
-      default:
-        break;
-    }
-  };
-
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '20px'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid rgba(255, 255, 255, 0.3)',
-            borderTop: '4px solid white',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <p style={{ color: 'white', fontSize: '18px', margin: 0 }}>
-            Loading your dashboard...
-          </p>
-        </div>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div className="loading-screen">
+        <div className="spinner" />
+        <p style={{ color: 'var(--text-secondary)', fontSize: '16px', margin: 0 }}>
+          Loading your dashboard...
+        </p>
       </div>
     );
   }
 
-  const statsData = [
-    { 
-      icon: '📝', 
-      title: 'Content Items', 
-      value: stats.totalContent.toString(), 
-      subtitle: stats.totalContent === 0 ? 'Ready to create your first post?' : `${stats.publishedContent} published, ${stats.draftContent} drafts` 
+  const statsCards = [
+    {
+      label: 'Total Content',
+      value: stats.totalContent,
+      sub: `${stats.publishedContent} published, ${stats.draftContent} drafts`,
+      color: 'var(--accent-blue)',
     },
-    { 
-      icon: '👀', 
-      title: 'Total Views', 
-      value: stats.totalViews.toString(), 
-      subtitle: stats.totalViews === 0 ? 'Your audience awaits' : 'Great engagement!' 
+    {
+      label: 'Total Views',
+      value: stats.totalViews,
+      sub: stats.totalViews === 0 ? 'Publish content to start tracking' : 'Across all content',
+      color: 'var(--accent-cyan)',
     },
-    { 
-      icon: '🤖', 
-      title: 'AI Suggestions', 
-      value: '∞', 
-      subtitle: 'Unlimited creativity' 
+    {
+      label: 'Published',
+      value: stats.publishedContent,
+      sub: 'Live content',
+      color: 'var(--accent-green)',
     },
-    { 
-      icon: '⚡', 
-      title: 'System Status', 
-      value: 'Online', 
-      subtitle: 'Everything is running smoothly' 
-    }
-  ];
-
-  const actions = [
-    { icon: '✍️', text: 'Create Content', desc: 'Start writing with AI assistance' },
-    { icon: '📚', text: 'View Analytics', desc: 'Manage all your content' },
-    { icon: '🎨', text: 'Customize Design', desc: 'Make it uniquely yours' },
-    { icon: '⚙️', text: 'Settings', desc: 'Configure your workspace' }
+    {
+      label: 'Drafts',
+      value: stats.draftContent,
+      sub: 'In progress',
+      color: 'var(--accent-amber)',
+    },
   ];
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
+    <div style={{ minHeight: '100vh' }}>
       {/* Header */}
-      <header style={{
-        background: 'rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-        padding: '16px 0'
+      <header className="glass-card" style={{
+        borderRadius: 0,
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderTop: 'none',
+        padding: '12px 0',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
       }}>
         <div style={{
           maxWidth: '1200px',
@@ -266,458 +192,225 @@ export default function Dashboard() {
           padding: '0 24px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px'
-            }}>
-              🤖
-            </div>
-            <h1 style={{
-              color: 'white',
-              fontSize: '24px',
-              fontWeight: '700',
-              margin: 0
-            }}>
-              AI CMS Platform
-            </h1>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              color: 'white'
-            }}>
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
               <div style={{
                 width: '36px',
                 height: '36px',
-                background: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-violet))',
+                borderRadius: '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '16px'
               }}>
-                👤
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '14px', fontWeight: '600' }}>
-                  {user?.firstName} {user?.lastName}
-                </span>
-                <span style={{ fontSize: '12px', opacity: 0.8 }}>
-                  {user?.email}
-                </span>
+              <span style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: '700' }}>AI CMS</span>
+            </Link>
+
+            <nav style={{ display: 'flex', gap: '4px', marginLeft: '24px' }}>
+              <Link href="/dashboard" className="btn-ghost btn-sm" style={{ background: 'var(--glass-bg-active)', fontSize: '13px', padding: '6px 14px' }}>Dashboard</Link>
+              <Link href="/content" className="btn-ghost btn-sm" style={{ fontSize: '13px', padding: '6px 14px' }}>Content</Link>
+              <Link href="/content/create" className="btn-ghost btn-sm" style={{ fontSize: '13px', padding: '6px 14px' }}>Create</Link>
+            </nav>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }}>
+                {user?.firstName} {user?.lastName}
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                {user?.email}
               </div>
             </div>
-            
-            <button
-              onClick={handleLogout}
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontWeight: '500'
-              }}
-            >
-              🚪 Logout
+            <div style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-violet))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '13px',
+              fontWeight: '600',
+            }}>
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
+            </div>
+            <button onClick={handleLogout} className="btn-ghost btn-sm" style={{ fontSize: '13px', padding: '6px 14px' }}>
+              Logout
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '40px 24px'
-      }}>
-        {/* Welcome Section */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '32px',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          textAlign: 'center'
-        }}>
-          <h2 style={{
-            color: 'white',
-            fontSize: '36px',
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Welcome */}
+        <div style={{ marginBottom: '32px' }}>
+          <h1 style={{
+            color: 'var(--text-primary)',
+            fontSize: '28px',
             fontWeight: '700',
-            margin: '0 0 12px 0'
+            margin: '0 0 6px 0',
+            letterSpacing: '-0.02em',
           }}>
-            {getGreeting()}, {user?.firstName}! 👋
-          </h2>
-          <p style={{
-            color: 'rgba(255, 255, 255, 0.9)',
-            fontSize: '18px',
-            margin: '0 0 24px 0',
-            lineHeight: '1.6'
-          }}>
-            Welcome to your AI-powered content management platform.
-            <br />Ready to create something amazing?
+            {getGreeting()}, {user?.firstName}
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px', margin: 0 }}>
+            {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
-          <div style={{
-            display: 'inline-flex',
-            background: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: '12px',
-            padding: '12px 20px',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span style={{ fontSize: '16px' }}>🕐</span>
-            <span style={{ color: 'white', fontSize: '14px', fontWeight: '500' }}>
-              {currentTime.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </span>
-          </div>
         </div>
 
         {/* Stats Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '24px',
-          marginBottom: '32px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '16px',
+          marginBottom: '32px',
         }}>
-          {statsData.map((stat, index) => (
-            <div 
-              key={index} 
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '16px',
-                padding: '24px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                transition: 'transform 0.2s ease',
-                cursor: 'pointer'
-              }}
-            >
-              <div style={{
-                fontSize: '32px',
-                marginBottom: '12px'
-              }}>
-                {stat.icon}
-              </div>
-              <h3 style={{
-                color: 'white',
-                fontSize: '24px',
-                fontWeight: '700',
-                margin: '0 0 4px 0'
-              }}>
-                {stat.value}
-              </h3>
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: '14px',
-                fontWeight: '500',
-                margin: '0 0 8px 0'
-              }}>
-                {stat.title}
+          {statsCards.map((stat, i) => (
+            <div key={i} className="glass-card-elevated" style={{ padding: '24px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {stat.label}
               </p>
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontSize: '12px',
-                margin: 0,
-                lineHeight: '1.4'
-              }}>
-                {stat.subtitle}
+              <p style={{ color: stat.color, fontSize: '32px', fontWeight: '700', margin: '0 0 4px 0' }}>
+                {stat.value}
+              </p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: 0 }}>
+                {stat.sub}
               </p>
             </div>
           ))}
         </div>
 
-        {/* Recent Content */}
-        {stats.recentContent && stats.recentContent.length > 0 && (
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '20px',
-            padding: '32px',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            marginBottom: '32px'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                color: 'white',
-                fontSize: '24px',
-                fontWeight: '700',
-                margin: 0
-              }}>
-                📄 Recent Content
-              </h3>
-              <button
-                onClick={() => router.push('/content')}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  color: 'white',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
-                }}
-              >
-                View All
-              </button>
+        {/* Two column layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
+          {/* Recent Content */}
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                Recent Content
+              </h2>
+              <Link href="/content" className="link" style={{ fontSize: '13px' }}>
+                View all
+              </Link>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {stats.recentContent.map((item: any, index: number) => (
-                <div
-                  key={item.id || index}
+
+            {stats.recentContent.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '0 0 16px 0' }}>
+                  No content yet. Create your first piece!
+                </p>
+                <Link href="/content/create" className="btn-primary btn-sm">
+                  Create Content
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {stats.recentContent.map((item: any, index: number) => (
+                  <div
+                    key={item.id || index}
+                    onClick={() => item.id && router.push(`/content/view/${item.id}`)}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--glass-bg)',
+                      border: '1px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--glass-border-hover)';
+                      e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'transparent';
+                      e.currentTarget.style.background = 'var(--glass-bg)';
+                    }}
+                  >
+                    <div>
+                      <div style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: '500' }}>
+                        {item.title}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Unknown'}
+                      </div>
+                    </div>
+                    <span className={`badge ${item.status === 'PUBLISHED' ? 'badge-published' : 'badge-draft'}`}>
+                      {item.status?.toLowerCase()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <h2 style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: '600', margin: '0 0 20px 0' }}>
+              Quick Actions
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { label: 'Create Content', desc: 'Write with AI assistance', href: '/content/create', icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                )},
+                { label: 'View All Content', desc: 'Browse and manage', href: '/content', icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                )},
+              ].map((action) => (
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  className="glass-card-elevated"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '12px',
                     padding: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onClick={() => {
-                    if (item.id) {
-                      router.push(`/content/view/${item.id}`);
-                    }
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '16px'
-                      }}>
-                        {item.type === 'ARTICLE' ? '📄' : item.type === 'POST' ? '📝' : '📰'}
-                      </div>
-                      <div>
-                        <div style={{ color: 'white', fontWeight: '600', fontSize: '16px' }}>
-                          {item.title}
-                        </div>
-                        <div style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '12px' }}>
-                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Unknown date'} • {item.status}
-                        </div>
-                      </div>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--accent-blue)',
+                    flexShrink: 0,
+                  }}>
+                    {action.icon}
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: '600' }}>
+                      {action.label}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <span style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '12px' }}>
-                        {item.views || 0} views
-                      </span>
-                      <div style={{
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '10px',
-                        fontWeight: '500',
-                        background: item.status === 'PUBLISHED' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.2)',
-                        color: item.status === 'PUBLISHED' ? '#22c55e' : '#eab308'
-                      }}>
-                        {item.status}
-                      </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                      {action.desc}
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
-        )}
-
-        {/* Quick Actions */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '20px',
-          padding: '32px',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          marginBottom: '32px'
-        }}>
-          <h3 style={{
-            color: 'white',
-            fontSize: '24px',
-            fontWeight: '700',
-            margin: '0 0 24px 0'
-          }}>
-            🚀 Quick Actions
-          </h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px'
-          }}>
-            {actions.map((action, index) => (
-              <button 
-                key={index}
-                onClick={() => handleActionClick(action.text)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'left'
-                }}
-              >
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>
-                  {action.icon}
-                </div>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  marginBottom: '4px'
-                }}>
-                  {action.text}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  opacity: 0.8,
-                  lineHeight: '1.3'
-                }}>
-                  {action.desc}
-                </div>
-              </button>
-            ))}
-          </div>
         </div>
-
-        {/* Empty State or Success Message */}
-        {stats.totalContent === 0 ? (
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(124, 58, 237, 0.3) 100%)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '20px',
-            padding: '32px',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✨</div>
-            <h3 style={{
-              color: 'white',
-              fontSize: '24px',
-              fontWeight: '700',
-              margin: '0 0 16px 0'
-            }}>
-              Ready to get started?
-            </h3>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.9)',
-              fontSize: '16px',
-              margin: '0 0 24px 0',
-              lineHeight: '1.6'
-            }}>
-              Create your first piece of content and let AI help you craft something amazing.
-            </p>
-            <button
-              onClick={() => router.push('/content/create')}
-              style={{
-                background: '#4f46e5',
-                color: 'white',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              ✍️ Create Your First Content
-            </button>
-          </div>
-        ) : (
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(124, 58, 237, 0.3) 100%)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '20px',
-            padding: '32px',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            textAlign: 'center'
-          }}>
-            <h3 style={{
-              color: 'white',
-              fontSize: '24px',
-              fontWeight: '700',
-              margin: '0 0 16px 0'
-            }}>
-              🎉 Great work!
-            </h3>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.9)',
-              fontSize: '16px',
-              margin: '0 0 24px 0',
-              lineHeight: '1.6'
-            }}>
-              You have {stats.totalContent} pieces of content with {stats.totalViews} total views. 
-              Keep creating amazing content!
-            </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '12px',
-              maxWidth: '600px',
-              margin: '0 auto'
-            }}>
-              <button
-                onClick={() => handleActionClick('Create Content')}
-                style={{
-                  background: '#4f46e5',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 20px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                ✍️ Create More Content
-              </button>
-              <button
-                onClick={() => handleActionClick('View Analytics')}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  padding: '12px 20px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                📚 View All Content
-              </button>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

@@ -1,16 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function HomePage() {
-  const router = useRouter();
-  const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
-  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Check if user is already logged in
   useEffect(() => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
@@ -18,61 +13,84 @@ export default function HomePage() {
 
   const features = [
     {
-      icon: '🤖',
-      title: 'AI-Powered Content Creation',
-      description: 'Generate high-quality content with intelligent AI assistance and writing suggestions',
-      status: 'Coming Soon'
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4z"/>
+          <circle cx="12" cy="15" r="2"/>
+        </svg>
+      ),
+      title: 'AI-Powered Creation',
+      description: 'Generate high-quality content with intelligent AI assistance powered by Google Gemini.',
+      available: true,
     },
     {
-      icon: '📝',
-      title: 'Complete Content Management',
-      description: 'Create, edit, and publish content with our beautiful and intuitive editor',
-      status: 'Available Now'
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      ),
+      title: 'Content Management',
+      description: 'Create, edit, and publish content with a beautiful, intuitive editor.',
+      available: true,
     },
     {
-      icon: '🔐',
-      title: 'Secure Authentication',
-      description: 'Multi-tenant authentication system with JWT tokens and password protection',
-      status: 'Available Now'
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      ),
+      title: 'Secure Auth',
+      description: 'Multi-tenant authentication with JWT tokens and role-based access control.',
+      available: true,
     },
     {
-      icon: '📊',
-      title: 'Analytics & Insights',
-      description: 'Track content performance with detailed analytics and user engagement metrics',
-      status: 'Coming Soon'
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+      ),
+      title: 'Analytics',
+      description: 'Track content performance with detailed analytics and engagement metrics.',
+      available: true,
     },
     {
-      icon: '🎨',
-      title: 'Modern Design System',
-      description: 'Beautiful, responsive interface with glassmorphism effects and smooth animations',
-      status: 'Available Now'
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      ),
+      title: 'SEO Optimization',
+      description: 'Auto-generated SEO titles, descriptions, and keyword suggestions.',
+      available: true,
     },
     {
-      icon: '⚡',
-      title: 'Real-time Collaboration',
-      description: 'Work together with your team in real-time with live editing and comments',
-      status: 'Coming Soon'
-    }
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+      ),
+      title: 'Modern Stack',
+      description: 'Built with Next.js 15, TypeScript, Prisma, and PostgreSQL.',
+      available: true,
+    },
   ];
 
-  const getStatusColor = (status: string) => {
-    return status === 'Available Now' 
-      ? { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e', border: '#22c55e' }
-      : { bg: 'rgba(251, 191, 36, 0.2)', text: '#fbbf24', border: '#fbbf24' };
-  };
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
+    <div style={{ minHeight: '100vh' }}>
       {/* Header */}
-      <header style={{
-        background: 'rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-        padding: '16px 0'
+      <header className="glass-card" style={{
+        borderRadius: 0,
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderTop: 'none',
+        padding: '16px 0',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
       }}>
         <div style={{
           maxWidth: '1200px',
@@ -80,86 +98,44 @@ export default function HomePage() {
           padding: '0 24px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
               width: '40px',
               height: '40px',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-violet))',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px'
             }}>
-              🤖
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
             </div>
-            <h1 style={{
-              color: 'white',
-              fontSize: '24px',
+            <span style={{
+              color: 'var(--text-primary)',
+              fontSize: '20px',
               fontWeight: '700',
-              margin: 0
+              letterSpacing: '-0.02em',
             }}>
-              AI CMS Platform
-            </h1>
+              AI CMS
+            </span>
           </div>
-          
-          <div style={{ display: 'flex', gap: '12px' }}>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
             {isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                onMouseEnter={() => setHoveredButton('dashboard')}
-                onMouseLeave={() => setHoveredButton(null)}
-                style={{
-                  background: hoveredButton === 'dashboard' ? '#4338ca' : '#4f46e5',
-                  color: 'white',
-                  textDecoration: 'none',
-                  padding: '12px 20px',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                🚀 Go to Dashboard
+              <Link href="/dashboard" className="btn-primary btn-sm">
+                Dashboard
               </Link>
             ) : (
               <>
-                <Link
-                  href="/auth/login"
-                  onMouseEnter={() => setHoveredButton('login')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  style={{
-                    background: hoveredButton === 'login' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                    color: 'white',
-                    textDecoration: 'none',
-                    padding: '12px 20px',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s ease',
-                    border: '1px solid rgba(255, 255, 255, 0.3)'
-                  }}
-                >
+                <Link href="/auth/login" className="btn-ghost btn-sm">
                   Sign In
                 </Link>
-                <Link
-                  href="/auth/register"
-                  onMouseEnter={() => setHoveredButton('register')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  style={{
-                    background: hoveredButton === 'register' ? '#4338ca' : '#4f46e5',
-                    color: 'white',
-                    textDecoration: 'none',
-                    padding: '12px 20px',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Get Started Free
+                <Link href="/auth/register" className="btn-gradient btn-sm">
+                  Get Started
                 </Link>
               </>
             )}
@@ -169,230 +145,159 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section style={{
-        padding: '80px 24px',
+        padding: '100px 24px 80px',
         textAlign: 'center',
-        maxWidth: '1200px',
-        margin: '0 auto'
+        maxWidth: '800px',
+        margin: '0 auto',
       }}>
         <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '24px',
-          padding: '60px 40px',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          marginBottom: '60px'
+          display: 'inline-block',
+          padding: '6px 16px',
+          borderRadius: '20px',
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.2)',
+          color: 'var(--accent-blue)',
+          fontSize: '13px',
+          fontWeight: '600',
+          marginBottom: '24px',
         }}>
-          <h2 style={{
-            color: 'white',
-            fontSize: '48px',
-            fontWeight: '700',
-            margin: '0 0 20px 0',
-            lineHeight: '1.2'
-          }}>
-            The Future of Content Management
-          </h2>
-          <p style={{
-            color: 'rgba(255, 255, 255, 0.9)',
-            fontSize: '20px',
-            margin: '0 0 40px 0',
-            lineHeight: '1.6',
-            maxWidth: '600px',
-            marginLeft: 'auto',
-            marginRight: 'auto'
-          }}>
-            Create, manage, and publish amazing content with AI-powered assistance. 
-            Built with modern technology for the next generation of content creators.
-          </p>
-          
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '16px',
-            flexWrap: 'wrap'
-          }}>
-            {!isLoggedIn ? (
-              <>
-                <Link
-                  href="/auth/register"
-                  style={{
-                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                    color: 'white',
-                    textDecoration: 'none',
-                    padding: '16px 32px',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    boxShadow: '0 4px 20px rgba(79, 70, 229, 0.4)'
-                  }}
-                >
-                  🚀 Start Creating Content
-                </Link>
-                <Link
-                  href="/auth/login"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    color: 'white',
-                    textDecoration: 'none',
-                    padding: '16px 32px',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    border: '2px solid rgba(255, 255, 255, 0.3)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  👋 Sign In
-                </Link>
-              </>
-            ) : (
-              <Link
-                href="/dashboard"
-                style={{
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                  color: 'white',
-                  textDecoration: 'none',
-                  padding: '16px 32px',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 20px rgba(79, 70, 229, 0.4)'
-                }}
-              >
-                📊 Go to Dashboard
-              </Link>
-            )}
-          </div>
+          Powered by Google Gemini AI
         </div>
 
-        {/* Features Grid */}
+        <h1 style={{
+          fontSize: 'clamp(36px, 5vw, 56px)',
+          fontWeight: '700',
+          color: 'var(--text-primary)',
+          margin: '0 0 20px 0',
+          lineHeight: '1.15',
+          letterSpacing: '-0.03em',
+        }}>
+          Content management,{' '}
+          <span style={{
+            background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-violet))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+            reimagined with AI
+          </span>
+        </h1>
+
+        <p style={{
+          color: 'var(--text-secondary)',
+          fontSize: '18px',
+          margin: '0 auto 40px',
+          lineHeight: '1.7',
+          maxWidth: '560px',
+        }}>
+          Create, manage, and publish content with AI-powered assistance.
+          Built for the next generation of content creators.
+        </p>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {!isLoggedIn ? (
+            <>
+              <Link href="/auth/register" className="btn-gradient" style={{ padding: '14px 28px', fontSize: '15px' }}>
+                Start Creating Free
+              </Link>
+              <Link href="/auth/login" className="btn-ghost" style={{ padding: '14px 28px', fontSize: '15px' }}>
+                Sign In
+              </Link>
+            </>
+          ) : (
+            <Link href="/dashboard" className="btn-gradient" style={{ padding: '14px 28px', fontSize: '15px' }}>
+              Go to Dashboard
+            </Link>
+          )}
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section style={{
+        padding: '0 24px 80px',
+        maxWidth: '1100px',
+        margin: '0 auto',
+      }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-          gap: '24px',
-          marginBottom: '60px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '20px',
         }}>
-          {features.map((feature, index) => {
-            const statusColors = getStatusColor(feature.status);
-            return (
-              <div
-                key={index}
-                onMouseEnter={() => setHoveredFeature(index)}
-                onMouseLeave={() => setHoveredFeature(null)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: '20px',
-                  padding: '32px',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  transition: 'transform 0.2s ease',
-                  transform: hoveredFeature === index ? 'translateY(-8px)' : 'translateY(0)',
-                  textAlign: 'left'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '16px'
-                }}>
-                  <div style={{ fontSize: '40px' }}>
-                    {feature.icon}
-                  </div>
-                  <div style={{
-                    background: statusColors.bg,
-                    color: statusColors.text,
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    border: `1px solid ${statusColors.border}`
-                  }}>
-                    {feature.status}
-                  </div>
-                </div>
-                
-                <h3 style={{
-                  color: 'white',
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  margin: '0 0 12px 0'
-                }}>
-                  {feature.title}
-                </h3>
-                
-                <p style={{
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  fontSize: '14px',
-                  lineHeight: '1.6',
-                  margin: 0
-                }}>
-                  {feature.description}
-                </p>
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="glass-card-elevated"
+              style={{ padding: '28px', textAlign: 'left' }}
+            >
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-blue)',
+                marginBottom: '16px',
+              }}>
+                {feature.icon}
               </div>
-            );
-          })}
-        </div>
 
-        {/* Tech Stack */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '20px',
-          padding: '40px',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
-        }}>
+              <h3 style={{
+                color: 'var(--text-primary)',
+                fontSize: '17px',
+                fontWeight: '600',
+                margin: '0 0 8px 0',
+              }}>
+                {feature.title}
+              </h3>
+
+              <p style={{
+                color: 'var(--text-secondary)',
+                fontSize: '14px',
+                lineHeight: '1.6',
+                margin: 0,
+              }}>
+                {feature.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Tech Stack */}
+      <section style={{
+        padding: '0 24px 80px',
+        maxWidth: '800px',
+        margin: '0 auto',
+      }}>
+        <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
           <h3 style={{
-            color: 'white',
-            fontSize: '24px',
-            fontWeight: '700',
-            margin: '0 0 20px 0'
+            color: 'var(--text-primary)',
+            fontSize: '20px',
+            fontWeight: '600',
+            margin: '0 0 24px 0',
           }}>
             Built with Modern Technology
           </h3>
-          
+
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: '16px',
-            maxWidth: '800px',
-            margin: '0 auto'
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '32px',
+            flexWrap: 'wrap',
           }}>
-            {[
-              { name: 'Next.js 15', emoji: '⚡' },
-              { name: 'TypeScript', emoji: '🔷' },
-              { name: 'PostgreSQL', emoji: '🐘' },
-              { name: 'Prisma ORM', emoji: '🔺' },
-              { name: 'JWT Auth', emoji: '🔐' },
-              { name: 'Docker', emoji: '🐳' }
-            ].map((tech, index) => (
-              <div
-                key={index}
+            {['Next.js 15', 'TypeScript', 'PostgreSQL', 'Prisma', 'JWT', 'Docker'].map((tech) => (
+              <span
+                key={tech}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  padding: '16px 12px',
-                  borderRadius: '12px',
-                  textAlign: 'center'
+                  color: 'var(--text-muted)',
+                  fontSize: '14px',
+                  fontWeight: '500',
                 }}
               >
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>
-                  {tech.emoji}
-                </div>
-                <div style={{
-                  color: 'white',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  {tech.name}
-                </div>
-              </div>
+                {tech}
+              </span>
             ))}
           </div>
         </div>
@@ -400,59 +305,13 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer style={{
-        background: 'rgba(0, 0, 0, 0.2)',
-        backdropFilter: 'blur(10px)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-        padding: '32px 24px',
-        textAlign: 'center'
+        borderTop: '1px solid var(--glass-border)',
+        padding: '24px',
+        textAlign: 'center',
       }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
-          <p style={{
-            color: 'rgba(255, 255, 255, 0.7)',
-            fontSize: '14px',
-            margin: '0 0 16px 0'
-          }}>
-            Built with ❤️ for the future of content management
-          </p>
-          
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '24px',
-            flexWrap: 'wrap'
-          }}>
-            <a
-              href="https://github.com/realAkshaj/ai-cms-platform"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                textDecoration: 'none',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              🔗 GitHub Repository
-            </a>
-            {!isLoggedIn && (
-              <Link
-                href="/auth/register"
-                style={{
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  textDecoration: 'none',
-                  fontSize: '14px'
-                }}
-              >
-                🚀 Get Started
-              </Link>
-            )}
-          </div>
-        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0 }}>
+          AI CMS Platform &middot; Built with Next.js, TypeScript & Gemini AI
+        </p>
       </footer>
     </div>
   );

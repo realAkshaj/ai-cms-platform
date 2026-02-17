@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { API_URL } from '../../../lib/config';
 
 interface FormErrors {
   email?: string;
@@ -22,12 +23,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Check for success message from registration
   useEffect(() => {
     const message = searchParams.get('message');
     if (message) {
       setSuccessMessage(decodeURIComponent(message));
-      // Clear the message from URL after 5 seconds
       setTimeout(() => {
         setSuccessMessage('');
         window.history.replaceState({}, '', '/auth/login');
@@ -55,7 +54,7 @@ export default function LoginPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
@@ -63,16 +62,16 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-  
+
     setIsLoading(true);
     setErrors({});
-  
+
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const response = await fetch('${API_URL}/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,34 +81,30 @@ export default function LoginPage() {
           password: formData.password,
         }),
       });
-  
+
       const data = await response.json();
-      console.log('Login response:', data); // Debug log
-  
+      console.log('Login response:', data);
+
       if (response.ok) {
-        console.log('Login successful!'); // Debug log
-        
-        // Extract data from your backend's response format
+        console.log('Login successful!');
+
         const token = data.data.accessToken;
         const userInfo = data.data.user;
-        
-        // Store the token
+
         localStorage.setItem('token', token);
-        
-        // Store user data with proper extraction
+
         const userData = {
           id: userInfo.id,
-          firstName: userInfo.firstName,  // This should now be the real name!
-          lastName: userInfo.lastName,    // This should now be the real name!
+          firstName: userInfo.firstName,
+          lastName: userInfo.lastName,
           email: userInfo.email
         };
-        
-        console.log('Storing user data:', userData); // Debug log
+
+        console.log('Storing user data:', userData);
         localStorage.setItem('userData', JSON.stringify(userData));
-        
-        // Redirect to dashboard
+
         window.location.href = '/dashboard';
-        
+
       } else {
         if (data.message) {
           setErrors({ general: data.message });
@@ -128,111 +123,85 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '16px',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
-      <div style={{ maxWidth: '400px', width: '100%' }}>
+      <div style={{ maxWidth: '420px', width: '100%' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            backgroundColor: '#4f46e5',
-            borderRadius: '12px',
+            width: '56px',
+            height: '56px',
+            background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-violet))',
+            borderRadius: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 16px',
-            color: 'white',
-            fontSize: '20px'
+            margin: '0 auto 20px',
+            fontSize: '24px',
+            boxShadow: '0 4px 20px var(--glow-blue)',
           }}>
-            🔐
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
           </div>
-          <h2 style={{ 
-            fontSize: '28px', 
-            fontWeight: 'bold', 
-            color: '#111827',
-            margin: '0 0 8px 0'
+          <h2 style={{
+            fontSize: '28px',
+            fontWeight: '700',
+            color: 'var(--text-primary)',
+            margin: '0 0 8px 0',
+            letterSpacing: '-0.02em',
           }}>
-            Sign in to your account
+            Welcome back
           </h2>
-          <p style={{ color: '#6b7280', margin: 0 }}>
-            Welcome back! Please enter your details.
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '15px' }}>
+            Sign in to your account to continue
           </p>
         </div>
 
         {/* Login Form */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '32px 24px',
-          borderRadius: '12px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-        }}>
+        <div className="glass-card" style={{ padding: '32px 28px' }}>
           <form onSubmit={handleSubmit}>
             {/* Success Message */}
             {successMessage && (
-              <div style={{
-                backgroundColor: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '24px',
-                color: '#166534',
-                fontSize: '14px'
-              }}>
-                ✅ {successMessage}
+              <div className="alert alert-success" style={{ marginBottom: '24px' }}>
+                {successMessage}
               </div>
             )}
 
             {/* General Error */}
             {errors.general && (
-              <div style={{
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '24px',
-                color: '#dc2626',
-                fontSize: '14px'
-              }}>
-                ❌ {errors.general}
+              <div className="alert alert-error" style={{ marginBottom: '24px' }}>
+                {errors.general}
               </div>
             )}
 
             {/* Email Field */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '500', 
-                color: '#374151',
-                marginBottom: '8px'
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: '500',
+                color: 'var(--text-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
               }}>
-                Email Address
+                Email
               </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="Enter your email"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: errors.email ? '1px solid #fca5a5' : '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
-                onBlur={(e) => e.target.style.borderColor = errors.email ? '#fca5a5' : '#d1d5db'}
+                placeholder="you@example.com"
+                className={`glass-input ${errors.email ? 'glass-input-error' : ''}`}
               />
               {errors.email && (
-                <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>
+                <p style={{ color: 'var(--accent-red)', fontSize: '12px', margin: '6px 0 0 0' }}>
                   {errors.email}
                 </p>
               )}
@@ -240,12 +209,14 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '500', 
-                color: '#374151',
-                marginBottom: '8px'
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: '500',
+                color: 'var(--text-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
               }}>
                 Password
               </label>
@@ -256,16 +227,8 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="Enter your password"
-                  style={{
-                    width: '100%',
-                    padding: '12px 40px 12px 12px',
-                    border: errors.password ? '1px solid #fca5a5' : '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
-                  onBlur={(e) => e.target.style.borderColor = errors.password ? '#fca5a5' : '#d1d5db'}
+                  className={`glass-input ${errors.password ? 'glass-input-error' : ''}`}
+                  style={{ paddingRight: '44px' }}
                 />
                 <button
                   type="button"
@@ -278,14 +241,16 @@ export default function LoginPage() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    color: 'var(--text-muted)',
+                    fontSize: '14px',
+                    padding: '4px',
                   }}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
               {errors.password && (
-                <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>
+                <p style={{ color: 'var(--accent-red)', fontSize: '12px', margin: '6px 0 0 0' }}>
                   {errors.password}
                 </p>
               )}
@@ -295,42 +260,26 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                backgroundColor: isLoading ? '#9ca3af' : '#4f46e5',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseOver={(e) => {
-                if (!isLoading) (e.target as HTMLButtonElement).style.backgroundColor = '#4338ca';
-              }}
-              onMouseOut={(e) => {
-                if (!isLoading) (e.target as HTMLButtonElement).style.backgroundColor = '#4f46e5';
-              }}
+              className="btn-primary"
+              style={{ width: '100%', padding: '14px' }}
             >
-              {isLoading ? '⏳ Signing in...' : '🚀 Sign In'}
+              {isLoading ? (
+                <>
+                  <span className="spinner spinner-sm" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
           {/* Register Link */}
           <div style={{ marginTop: '24px', textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              Don't have an account?{' '}
-              <Link 
-                href="/auth/register"
-                style={{ 
-                  color: '#4f46e5', 
-                  textDecoration: 'none',
-                  fontWeight: '500'
-                }}
-              >
-                Create one here
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
+              Don&apos;t have an account?{' '}
+              <Link href="/auth/register" className="link" style={{ fontWeight: '500' }}>
+                Create one
               </Link>
             </p>
           </div>
