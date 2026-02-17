@@ -29,7 +29,7 @@ const getAuthToken = () => {
 
 const createContent = async (data: CreateContentData) => {
   const token = getAuthToken();
-  const response = await fetch('${API_URL}/api/content', {
+  const response = await fetch(`${API_URL}/api/content`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify(data)

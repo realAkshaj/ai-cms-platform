@@ -59,7 +59,7 @@ export default function Dashboard() {
         }
 
         try {
-          const response = await fetch('${API_URL}/api/content/analytics/stats', {
+          const response = await fetch(`${API_URL}/api/content/analytics/stats`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
