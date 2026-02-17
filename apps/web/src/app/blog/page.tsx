@@ -26,6 +26,10 @@ interface Pagination {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/\n+/g, ' ').trim();
+}
+
 const TYPE_OPTIONS = ['', 'ARTICLE', 'POST', 'PAGE', 'NEWSLETTER'] as const;
 const TYPE_LABELS: Record<string, string> = {
   '': 'All Types',
@@ -303,7 +307,7 @@ export default function BlogPage() {
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
                       }}>
-                        {post.excerpt}
+                        {stripHtml(post.excerpt)}
                       </p>
                     )}
 
