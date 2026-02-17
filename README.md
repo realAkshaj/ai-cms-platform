@@ -1,334 +1,488 @@
-# 🤖 AI-Powered Content Management Platform
+# AI CMS Platform
 
-> Building the future of content management with AI integration. Currently featuring a complete authentication system with beautiful UI - and there's so much more coming!
+A full-stack, AI-powered content management system built with Next.js, Express, PostgreSQL, and Google Gemini. Features a dark glassmorphism UI, JWT authentication, multi-tenant architecture, and AI-assisted content generation.
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.3.4-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=flat-square&logo=docker)](https://www.docker.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
+**Live Demo:** [ai-cms-platform-web.vercel.app](https://ai-cms-platform-web.vercel.app)
 
-## 🎯 What's Working Right Now
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.2-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-6.10-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
+[![Gemini](https://img.shields.io/badge/Gemini_AI-Integrated-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 
-Just got the authentication system fully working and it looks incredible! Here's what you can actually use today:
+---
 
-- **🚀 Beautiful Registration & Login** - Complete with form validation and smooth animations
-- **📱 Responsive Dashboard** - Clean, modern interface that works on any device  
-- **🔐 Secure Authentication** - JWT tokens, password hashing, the whole nine yards
-- **💾 Multi-tenant Database** - PostgreSQL with Prisma ORM, ready for organizations
-- **🐳 Docker Development** - One command to get everything running locally
+## Table of Contents
 
-**Try it out:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
-- Demo credentials: `test@example.com` / `Test123!@#`
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+- [AI Integration](#ai-integration)
+- [Deployment](#deployment)
+- [Project Structure](#project-structure)
+- [Database Schema](#database-schema)
+- [License](#license)
 
-## ✨ What Makes This Special
+---
 
-I'm building this as a modern, AI-powered alternative to traditional CMS platforms. The authentication system you see now is just the foundation - imagine having AI help you write better content, optimize for SEO automatically, and collaborate in real-time with your team.
+## Features
 
-### 🎨 Current Features
-- **Gorgeous UI** - No more ugly forms! Everything is designed to feel smooth and professional
-- **Rock-Solid Auth** - Registration, login, logout, token refresh - all working perfectly
-- **Real Form Validation** - Helpful error messages that actually make sense
-- **Loading States** - No more wondering if something's working
-- **Mobile Ready** - Looks great on phones, tablets, and desktops
+**Content Management**
+- Create, edit, publish, and delete content with a full WYSIWYG workflow
+- Support for multiple content types: articles, blog posts, pages, newsletters
+- Tag management, SEO metadata, featured images
+- Content filtering, search, and pagination
+- Preview mode before publishing
 
+**AI-Powered Generation**
+- Full article generation with configurable tone, length, and content type
+- AI-generated content ideas and title variations
+- Automatic SEO title and meta description generation
+- Content quality scoring with automatic regeneration
+- Powered by Google Gemini (gemini-2.5-flash)
 
-## 🏗️ How It All Fits Together
+**Authentication & Multi-Tenancy**
+- JWT-based authentication with token refresh
+- Automatic organization creation on registration
+- Role-based access scoping per organization
+- Secure password hashing with bcrypt
 
-```mermaid
-graph TB
-    A[Next.js Frontend<br/>Beautiful UI & Forms] --> B[Express.js API<br/>Secure & Fast]
-    B --> C[PostgreSQL<br/>User & Content Data]
-    B --> D[Redis<br/>Sessions & Cache]
-    B --> E[MongoDB<br/>Media & Files]
-    B --> F[AI Services<br/>Smart Features]
-    G[Docker Environment<br/>Easy Development] --> C
-    G --> D
-    G --> E
+**UI/UX**
+- Dark glassmorphism design system with frosted glass cards and animated mesh backgrounds
+- Fully responsive across desktop, tablet, and mobile
+- CSS-only hover effects and transitions (no JavaScript hover state management)
+- Consistent component library: glass cards, inputs, buttons, badges, alerts, spinners
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16, React 19, TypeScript |
+| Backend | Express.js 4, TypeScript, Node.js 20+ |
+| Database | PostgreSQL 15 (Prisma ORM) |
+| AI | Google Gemini API (`@google/generative-ai`) |
+| Auth | JWT (jsonwebtoken), bcrypt |
+| Styling | Custom CSS design system (glassmorphism) |
+| Dev Tools | Docker Compose, Nodemon, Turbopack |
+| Deployment | Vercel (frontend), Render (API), Neon (database) |
+
+---
+
+## Architecture
+
+```
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│   Next.js App   │──────>│  Express API    │──────>│   PostgreSQL    │
+│   (Vercel)      │  HTTP │  (Render)       │Prisma │   (Neon)        │
+│                 │<──────│                 │<──────│                 │
+└─────────────────┘       └────────┬────────┘       └─────────────────┘
+                                   │
+                                   │ API Call
+                                   v
+                          ┌─────────────────┐
+                          │  Google Gemini  │
+                          │  AI Service     │
+                          └─────────────────┘
 ```
 
-## 🛠️ The Tech Stack
+The application follows a monorepo structure with two workspaces:
+- `apps/web` — Next.js frontend (client-side rendering, App Router)
+- `apps/api` — Express REST API with Prisma ORM
 
-I chose these technologies because they're modern, reliable, and perfect for scaling:
+All API communication uses JSON over HTTP with Bearer token authentication.
 
-### Frontend (The Pretty Stuff)
-- **Next.js 15** - React framework with amazing developer experience
-- **TypeScript** - Because catching bugs early is better than debugging later
-- **Tailwind CSS** - Utility-first CSS that makes styling actually enjoyable
-- **Lucide Icons** - Beautiful, consistent icons
+---
 
-### Backend (The Smart Stuff)  
-- **Express.js** - Fast, minimalist web framework
-- **Prisma** - Database toolkit that makes queries a breeze
-- **JWT Authentication** - Secure, stateless authentication
-- **bcrypt** - Industry-standard password hashing
+## Getting Started
 
-### Infrastructure (The Reliable Stuff)
-- **PostgreSQL** - Rock-solid relational database
-- **Redis** - Lightning-fast caching and sessions
-- **Docker** - Containerized development environment
-- **GitHub** - Version control and collaboration
+### Prerequisites
 
-## 🚀 Getting Started (It's Actually Easy!)
+- **Node.js** 20+
+- **Docker & Docker Compose** (for local database services)
+- **Git**
 
-### What You'll Need
-- Node.js 18+ (the JavaScript runtime)
-- Docker (for databases - don't worry, it's automated)
-- A code editor (VS Code is great)
-- About 10 minutes
+### 1. Clone the repository
 
-### 1. Get the Code
 ```bash
 git clone https://github.com/realAkshaj/ai-cms-platform.git
 cd ai-cms-platform
 ```
 
-### 2. Set Up Environment
-```bash
-# Copy the example environment files
-cp .env.example .env
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env.local
+### 2. Install dependencies
 
-# The defaults work fine for development!
-```
-
-### 3. Install Everything
 ```bash
-# Install dependencies (this might take a minute)
 npm install
-
-# Install app-specific dependencies
-cd apps/api && npm install
-cd ../web && npm install
-cd ../..
 ```
 
-### 4. Start the Databases
-```bash
-# This starts PostgreSQL, Redis, and MongoDB in Docker
-docker-compose up -d
+### 3. Configure environment variables
 
-# Check they're running (you should see 3 containers)
+```bash
+cp .env.example apps/api/.env
+```
+
+Edit `apps/api/.env` and update the values as needed. See [Environment Variables](#environment-variables) for details.
+
+Create `apps/web/.env.local`:
+
+```bash
+echo 'NEXT_PUBLIC_API_URL=http://localhost:3001' > apps/web/.env.local
+```
+
+### 4. Start database services
+
+```bash
+docker-compose up -d
+```
+
+This starts PostgreSQL (port 5432), Redis (port 6379), and MongoDB (port 27017).
+
+Verify containers are running:
+
+```bash
 docker ps
 ```
 
-### 5. Set Up the Database
+### 5. Initialize the database
+
 ```bash
 cd apps/api
-
-# Generate the database client
 npx prisma generate
-
-# Create the database tables
 npx prisma db push
-
 cd ../..
 ```
 
-### 6. Start Everything
+### 6. Start the development servers
+
 ```bash
-# This starts both frontend and backend
 npm run dev
 ```
 
-That's it! Open http://localhost:3000 and you should see the beautiful registration page.
+This starts both servers concurrently:
+- **Frontend:** http://localhost:3000
+- **API:** http://localhost:3001
+- **Health check:** http://localhost:3001/health
 
-## 📁 Project Structure (Where Everything Lives)
+### 7. Verify the setup
 
-```
-📁 PROJECT STRUCTURE:
-
-apps/
-├── api/                          # Backend (Express + Prisma)
-│   ├── src/
-│   │   ├── routes/
-│   │   │   ├── auth.ts          # Working auth endpoints
-│   │   │   ├── content.ts       # Complete content CRUD + AI generation
-│   │   │   └── ai.ts            # AI-specific endpoints
-│   │   ├── services/
-│   │   │   ├── content.ts       # Database service layer
-│   │   │   └── ai.ts            # Enhanced AI service with quality controls
-│   │   ├── middleware/
-│   │   │   └── auth.ts          # JWT authentication
-│   │   └── app.ts              # Main server file
-│   └── prisma/
-│       └── schema.prisma       # Extended with Content model
-└── web/                         # Frontend (Next.js)
-    └── src/
-        ├── app/
-        │   ├── auth/           # Login & register pages
-        │   ├── content/        # Content management pages
-        │   │   ├── create/     # Content creation with AI
-        │   │   ├── view/[id]/  # Content viewing page
-        │   │   └── edit/[id]/  # Content editing page
-        │   ├── dashboard/      # User dashboard
-        │   └── page.tsx       # Homepage
-        └── services/
-            ├── api.ts          # Axios API client
-            ├── authService.ts  # Frontend auth service
-            └── contentService.ts # Frontend content service with AI
-```
-
-## 🔌 API Endpoints (What's Working)
-
-### Authentication (All Working!)
-- `POST /api/auth/register` - Create a new account
-- `POST /api/auth/login` - Sign in to your account  
-- `POST /api/auth/logout` - Sign out safely
-- `GET /api/auth/me` - Get your profile info
-- `POST /api/auth/refresh` - Refresh your session
-
-
-
-## 🤖 AI Features (NEW!)
-
-The AI integration is now live and working! Here's what you can do:
-
-### ✅ **Content Generation**
-- **Smart AI Writing** - Generate articles, blog posts, newsletters, and pages
-- **Quality Control** - Automatic quality scoring and regeneration for better content
-- **Multiple Tones** - Professional, casual, friendly, authoritative, or conversational
-- **SEO Optimization** - Automatic SEO titles and meta descriptions
-- **Content Outlining** - Structured content with proper headings and sections
-
-### ✅ **AI Endpoints Available**
-- `POST /api/ai/generate` - Generate complete content pieces
-- `POST /api/ai/ideas` - Get content topic suggestions  
-- `POST /api/ai/titles` - Generate title variations
-- `POST /api/ai/improve` - Enhance existing content
-- `GET /api/ai/status` - Check AI service health
-
-### 🎯 **How to Use AI Generation**
-
-1. **In Content Creation**: 
-   - Enter a topic in the title field
-   - Click "Generate AI Content" 
-   - AI creates full article with SEO optimization
-
-2. **API Usage**:
-   ```bash
-   curl -X POST http://localhost:3001/api/ai/generate \
-     -H "Authorization: Bearer YOUR_TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "topic": "Getting started with React",
-       "type": "ARTICLE", 
-       "tone": "professional",
-       "length": "medium",
-       "includeSEO": true
-     }'
-   ```
-
-### ⚙️ **AI Configuration**
-
-Add your Google Gemini API key to enable AI features:
-
-```bash
-# In your apps/api/.env file
-GEMINI_API_KEY=your_google_gemini_api_key_here
-```
-
-Get your API key at: https://makersuite.google.com/app/apikey
-
-### 🎨 **AI Content Quality**
-
-The system includes advanced quality controls:
-- **Repetition Detection** - Prevents generic template content
-- **Filler Phrase Detection** - Removes meaningless business jargon  
-- **Content Specificity** - Ensures actual valuable information
-- **Automatic Regeneration** - Low-quality content gets improved automatically
-- **Quality Scoring** - Every piece gets rated 0-100 for quality
-
-### 🧪 **Try It Out**
-
-1. Start your development environment: `npm run dev`
-2. Go to http://localhost:3000/content/create
-3. Enter a topic like "TypeScript best practices"
-4. Click "Generate AI Content"
-5. Watch as AI creates a comprehensive, specific article!
-
-The AI will generate content that's actually useful instead of generic templates. Perfect for blogs, documentation, marketing content, and more.
-
-## 🧪 Testing It Out
-
-### Manual Testing Checklist
-- ✅ Register a new account
-- ✅ Login with your credentials  
-- ✅ See the dashboard
-- ✅ Logout and login again
-- ✅ Try invalid passwords (should show errors)
-- ✅ Check responsive design on mobile
-
-### What to Try Next
-1. Register at http://localhost:3000/auth/register
-2. Use a real email and strong password
-3. Login at http://localhost:3000/auth/login
-4. Explore the dashboard
-5. Test the logout function
-
-## 🚀 Deployment (When You're Ready)
-
-### Environment Variables for Production
-```bash
-DATABASE_URL=your-production-database-url
-JWT_SECRET=your-super-secret-jwt-key
-JWT_REFRESH_SECRET=your-refresh-token-secret
-REDIS_URL=your-redis-instance
-```
-
-### Recommended Platforms
-- **Frontend**: Vercel (perfect for Next.js)
-- **Backend**: Railway or Render (easy Node.js deployment)
-- **Database**: Neon or PlanetScale (managed PostgreSQL)
-- **Redis**: Upstash (serverless Redis)
-
-## 🛣️ The Roadmap
-
-### ✅ Phase 1: Foundation (DONE!)
-- [x] Beautiful authentication system
-- [x] Secure backend API
-- [x] Multi-tenant database design
-- [x] Docker development environment
-- [x] Professional UI/UX
-
-### 🔄 Phase 2: Core CMS (In Progress)
-- [x] Rich text content editor
-- [x] Content management dashboard
-- [x] File upload and media library
-- [x] User profiles and settings
-- [x] Organization management
-
-### 🤖 Phase 3: AI Integration (The Fun Stuff!)
-- [x] AI-powered content generation
-- [x] Smart SEO optimization
-- [x] Content sentiment analysis
-
-
-
-## 📈 Performance Stats
-
-Current performance (and it's pretty good!):
-- **Page Load**: < 2 seconds
-- **API Response**: < 100ms average
-- **Database Queries**: < 50ms
-- **Authentication**: < 500ms end-to-end
-
-## 💭 Why I Built This
-
-Traditional CMS platforms feel outdated. They're either too simple for serious projects or so complex that you need a PhD to use them. I wanted to build something that:
-
-- **Looks modern** - Because good design matters
-- **Works everywhere** - Mobile, tablet, desktop
-- **Scales with you** - From personal blog to enterprise
-- **Embraces AI** - The future of content is intelligent
-- **Stays secure** - Your data deserves protection
-
-
-## 📄 License
-
-MIT License - basically, use it however you want! Just give credit where it's due.
+1. Open http://localhost:3000
+2. Register a new account
+3. Log in and explore the dashboard
+4. Create content at `/content/create`
 
 ---
+
+## Environment Variables
+
+### API (`apps/api/.env`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `NODE_ENV` | No | `development` | Environment mode |
+| `API_PORT` | No | `3001` | API server port |
+| `FRONTEND_URL` | No | `http://localhost:3000` | Allowed CORS origin(s), comma-separated |
+| `JWT_SECRET` | Yes | — | Secret key for signing JWTs |
+| `JWT_REFRESH_SECRET` | Yes | — | Secret key for refresh tokens |
+| `JWT_EXPIRES_IN` | No | `15m` | Access token expiration |
+| `JWT_REFRESH_EXPIRES_IN` | No | `7d` | Refresh token expiration |
+| `GEMINI_API_KEY` | No | — | Google Gemini API key (enables AI features) |
+| `REDIS_URL` | No | — | Redis connection string (for caching) |
+
+### Frontend (`apps/web/.env.local`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `NEXT_PUBLIC_API_URL` | No | `http://localhost:3001` | Backend API base URL |
+
+---
+
+## API Reference
+
+### Health & Status
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/health` | No | Server health, database status, AI status |
+
+### Authentication
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/auth/register` | No | Register user and create organization |
+| `POST` | `/api/auth/login` | No | Authenticate and receive JWT |
+| `POST` | `/api/auth/logout` | No | Logout (client-side token removal) |
+
+**Register request body:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "lastName": "Doe",
+  "organizationName": "My Org"
+}
+```
+
+**Login response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "id": "...", "email": "...", "firstName": "...", "lastName": "..." },
+    "accessToken": "eyJhbGciOi..."
+  }
+}
+```
+
+### Content Management
+
+All content endpoints require `Authorization: Bearer <token>` header.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/content` | List content (supports `page`, `limit`, `status`, `type`, `search`, `sortBy`, `sortOrder` query params) |
+| `POST` | `/api/content` | Create content |
+| `GET` | `/api/content/:id` | Get content by ID |
+| `PUT` | `/api/content/:id` | Update content |
+| `DELETE` | `/api/content/:id` | Delete content |
+| `POST` | `/api/content/:id/publish` | Publish a draft |
+| `GET` | `/api/content/analytics/stats` | Dashboard statistics |
+
+**Create content request body:**
+
+```json
+{
+  "title": "My Article",
+  "content": "<p>Article body...</p>",
+  "type": "ARTICLE",
+  "status": "DRAFT",
+  "tags": ["tech", "ai"],
+  "seoTitle": "My Article | AI CMS",
+  "seoDescription": "A great article about..."
+}
+```
+
+### AI Generation
+
+All AI endpoints require authentication. AI features are available when `GEMINI_API_KEY` is configured.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/ai/status` | AI service status and configuration |
+| `POST` | `/api/ai/generate` | Generate full content |
+| `POST` | `/api/ai/ideas` | Generate content ideas |
+| `POST` | `/api/ai/titles` | Generate title variations |
+| `POST` | `/api/ai/improve` | Improve existing content |
+
+**Generate content request:**
+
+```json
+{
+  "topic": "Getting Started with TypeScript",
+  "type": "ARTICLE",
+  "tone": "professional",
+  "length": "medium",
+  "keywords": ["typescript", "javascript", "types"],
+  "includeSEO": true,
+  "includeOutline": true
+}
+```
+
+**Tone options:** `professional`, `casual`, `friendly`, `authoritative`, `conversational`
+**Length options:** `short` (300-500 words), `medium` (800-1200 words), `long` (1500-2500 words)
+**Type options:** `ARTICLE`, `POST`, `NEWSLETTER`, `PAGE`
+
+---
+
+## AI Integration
+
+The platform integrates with Google Gemini for content generation. To enable AI features:
+
+1. Get an API key at [Google AI Studio](https://aistudio.google.com/apikey)
+2. Add `GEMINI_API_KEY=your_key` to your environment variables
+3. Verify at `GET /api/ai/status`
+
+**Capabilities:**
+- Full article generation with structured headings, paragraphs, and formatting
+- Content quality scoring with automatic regeneration for low-quality outputs
+- Repetition and filler phrase detection
+- SEO metadata generation (titles, descriptions, suggested tags)
+- Content ideas brainstorming
+- Title variation generation
+
+The AI Assistant panel is accessible from the content creation and editing pages via the floating action button.
+
+---
+
+## Deployment
+
+The application is deployed using free tiers of three services:
+
+| Service | Purpose | URL |
+|---------|---------|-----|
+| [Vercel](https://vercel.com) | Next.js frontend | `https://ai-cms-platform-web.vercel.app` |
+| [Render](https://render.com) | Express API | `https://ai-cms-api.onrender.com` |
+| [Neon](https://neon.tech) | PostgreSQL database | Managed connection |
+
+### Deploy your own
+
+#### 1. Database (Neon)
+
+1. Create a free project at [neon.tech](https://neon.tech)
+2. Copy the connection string
+3. Push the schema:
+
+```bash
+cd apps/api
+DATABASE_URL="your-neon-connection-string" npx prisma db push
+```
+
+#### 2. API (Render)
+
+1. Create a new **Web Service** on [render.com](https://render.com)
+2. Connect your GitHub repository
+3. Configure:
+   - **Root Directory:** `apps/api`
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm run start`
+   - **Instance Type:** Free
+4. Add environment variables: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `GEMINI_API_KEY`, `NODE_ENV=production`
+
+#### 3. Frontend (Vercel)
+
+1. Import your repository on [vercel.com](https://vercel.com)
+2. Set **Root Directory** to `apps/web`
+3. Add environment variable: `NEXT_PUBLIC_API_URL=https://your-api.onrender.com`
+4. Deploy
+
+#### 4. Connect CORS
+
+Update the `FRONTEND_URL` environment variable on Render to your Vercel domain:
+
+```
+FRONTEND_URL=https://your-app.vercel.app
+```
+
+> **Note:** Render's free tier spins down after 15 minutes of inactivity. The first request after idle will take ~30 seconds for a cold start.
+
+---
+
+## Project Structure
+
+```
+ai-cms-platform/
+├── apps/
+│   ├── api/                        # Express REST API
+│   │   ├── prisma/
+│   │   │   └── schema.prisma       # Database schema (4 models)
+│   │   └── src/
+│   │       ├── server.ts           # Server entry point
+│   │       ├── app.ts              # Express app configuration
+│   │       ├── config/
+│   │       │   └── env.ts          # Environment validation
+│   │       ├── controllers/
+│   │       │   └── auth.ts         # Auth controller
+│   │       ├── middleware/
+│   │       │   ├── auth.ts         # JWT authentication middleware
+│   │       │   └── validation.ts   # Request validation
+│   │       ├── routes/
+│   │       │   ├── auth.ts         # Auth endpoints
+│   │       │   ├── content.ts      # Content CRUD + AI endpoints
+│   │       │   └── ai.ts           # AI-specific endpoints
+│   │       └── services/
+│   │           ├── ai.ts           # Gemini AI service
+│   │           ├── auth.ts         # Auth business logic
+│   │           └── content.ts      # Content business logic
+│   │
+│   └── web/                        # Next.js frontend
+│       └── src/
+│           ├── app/
+│           │   ├── globals.css     # Design system (CSS variables, components)
+│           │   ├── layout.tsx      # Root layout with mesh background
+│           │   ├── page.tsx        # Landing page
+│           │   ├── auth/
+│           │   │   ├── login/      # Login page
+│           │   │   └── register/   # Registration page
+│           │   ├── content/
+│           │   │   ├── page.tsx    # Content list with filters
+│           │   │   ├── create/     # Content creation with AI
+│           │   │   ├── edit/[id]/  # Content editing
+│           │   │   └── view/[id]/  # Content viewer
+│           │   └── dashboard/      # Analytics dashboard
+│           ├── components/
+│           │   └── AIAssistant.tsx  # AI assistant slide-out panel
+│           ├── lib/
+│           │   ├── config.ts       # API URL configuration
+│           │   └── api.ts          # Fetch-based API client
+│           └── services/
+│               ├── api.ts          # Axios API client with interceptors
+│               ├── authService.ts  # Auth service layer
+│               └── contentService.ts # Content service layer
+│
+├── docker-compose.yml              # Local dev services (PostgreSQL, Redis, MongoDB)
+├── render.yaml                     # Render deployment config
+├── package.json                    # Root workspace config
+└── .env.example                    # Environment variable template
+```
+
+---
+
+## Database Schema
+
+Four models managed by Prisma ORM:
+
+**Organization** — Multi-tenant workspace
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | String | CUID primary key |
+| `name` | String | Organization name |
+| `slug` | String | Unique URL slug |
+
+**User** — Authenticated user within an organization
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | String | CUID primary key |
+| `email` | String | Unique |
+| `password` | String | bcrypt hashed |
+| `firstName` | String | |
+| `lastName` | String | |
+| `organizationId` | String | Foreign key |
+
+**Content** — CMS content entries
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | String | CUID primary key |
+| `title` | String | |
+| `slug` | String | Unique per organization |
+| `body` | Text | HTML content body |
+| `status` | Enum | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
+| `type` | Enum | `POST`, `PAGE`, `ARTICLE`, `NEWSLETTER` |
+| `tags` | String[] | Array of tag strings |
+| `views`, `likes`, `shares` | Int | Engagement metrics |
+| `seoTitle`, `seoDescription` | String? | SEO metadata |
+| `featuredImage` | String? | Image URL |
+| `authorId` | String | Foreign key to User |
+| `organizationId` | String | Foreign key to Organization |
+
+**AIAnalysis** — AI generation audit log
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | String | CUID primary key |
+| `type` | String | Generation type |
+| `input` | Text | Prompt/request data |
+| `output` | Text | Generated result |
+| `contentId` | String? | Optional link to content |
+| `organizationId` | String | Foreign key |
+
+---
+
+## License
+
+MIT
