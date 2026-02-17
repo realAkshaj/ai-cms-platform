@@ -37,6 +37,14 @@ A full-stack, AI-powered content management system built with Next.js, Express, 
 - Content filtering, search, and pagination
 - Preview mode before publishing
 
+**Public Blog**
+- Public-facing blog at `/blog` — no login required
+- Browse all published posts across all users and organizations
+- Search and filter by content type (articles, posts, pages, newsletters)
+- Full post view with author attribution, publish date, tags, and view count
+- Paginated listing with responsive card grid
+- Powered by unauthenticated API routes (`/api/public/posts`)
+
 **AI-Powered Generation**
 - Full article generation with configurable tone, length, and content type
 - AI-generated content ideas and title variations
@@ -269,6 +277,15 @@ All content endpoints require `Authorization: Bearer <token>` header.
 }
 ```
 
+### Public Blog
+
+These endpoints require no authentication and return only published content.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/public/posts` | List published posts (supports `page`, `limit`, `search`, `type` query params) |
+| `GET` | `/api/public/posts/:id` | Get a single published post by ID |
+
 ### AI Generation
 
 All AI endpoints require authentication. AI features are available when `GEMINI_API_KEY` is configured.
@@ -395,7 +412,8 @@ ai-cms-platform/
 │   │       ├── routes/
 │   │       │   ├── auth.ts         # Auth endpoints
 │   │       │   ├── content.ts      # Content CRUD + AI endpoints
-│   │       │   └── ai.ts           # AI-specific endpoints
+│   │       │   ├── ai.ts           # AI-specific endpoints
+│   │       │   └── public.ts       # Unauthenticated public blog endpoints
 │   │       └── services/
 │   │           ├── ai.ts           # Gemini AI service
 │   │           ├── auth.ts         # Auth business logic
@@ -410,6 +428,9 @@ ai-cms-platform/
 │           │   ├── auth/
 │           │   │   ├── login/      # Login page
 │           │   │   └── register/   # Registration page
+│           │   ├── blog/
+│           │   │   ├── page.tsx    # Public blog listing
+│           │   │   └── [id]/       # Public post detail view
 │           │   ├── content/
 │           │   │   ├── page.tsx    # Content list with filters
 │           │   │   ├── create/     # Content creation with AI
