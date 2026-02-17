@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import contentRoutes from './routes/content';
 import aiRoutes from './routes/ai'; // ADD THIS LINE
+import publicRoutes from './routes/public';
 
 // Load environment variables
 dotenv.config();
@@ -84,13 +85,14 @@ app.get('/api/db-test', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/ai', aiRoutes); // ADD THIS LINE
+app.use('/api/public', publicRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,
-    availableRoutes: ['/api/auth', '/api/content', '/api/ai', '/health'] // UPDATE THIS LINE
+    availableRoutes: ['/api/auth', '/api/content', '/api/ai', '/api/public', '/health']
   });
 });
 

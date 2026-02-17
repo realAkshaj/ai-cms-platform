@@ -125,6 +125,9 @@ export default function HomePage() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
+            <Link href="/blog" className="btn-ghost btn-sm">
+              Blog
+            </Link>
             {isLoggedIn ? (
               <Link href="/dashboard" className="btn-primary btn-sm">
                 Dashboard
@@ -199,14 +202,19 @@ export default function HomePage() {
               <Link href="/auth/register" className="btn-gradient" style={{ padding: '14px 28px', fontSize: '15px' }}>
                 Start Creating Free
               </Link>
-              <Link href="/auth/login" className="btn-ghost" style={{ padding: '14px 28px', fontSize: '15px' }}>
-                Sign In
+              <Link href="/blog" className="btn-ghost" style={{ padding: '14px 28px', fontSize: '15px' }}>
+                Read our Blog
               </Link>
             </>
           ) : (
-            <Link href="/dashboard" className="btn-gradient" style={{ padding: '14px 28px', fontSize: '15px' }}>
-              Go to Dashboard
-            </Link>
+            <>
+              <Link href="/dashboard" className="btn-gradient" style={{ padding: '14px 28px', fontSize: '15px' }}>
+                Go to Dashboard
+              </Link>
+              <Link href="/blog" className="btn-ghost" style={{ padding: '14px 28px', fontSize: '15px' }}>
+                Read our Blog
+              </Link>
+            </>
           )}
         </div>
       </section>
