@@ -252,12 +252,10 @@ export default function BlogPostPage() {
             color: 'var(--text-secondary)',
             fontSize: '16px',
             lineHeight: '1.8',
-            whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
           }}
-        >
-          {post.body}
-        </div>
+          dangerouslySetInnerHTML={{ __html: post.body }}
+        />
 
         {/* Tags */}
         {post.tags.length > 0 && (
