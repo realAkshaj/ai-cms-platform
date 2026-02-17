@@ -79,13 +79,13 @@ export class ContentService {
     // Use only the types that definitely exist in your schema
     switch (frontendType.toUpperCase()) {
       case 'POST':
-        return ContentType.ARTICLE;
+        return ContentType.POST;
       case 'PAGE':
         return ContentType.PAGE;
       case 'ARTICLE':
         return ContentType.ARTICLE;
       case 'NEWSLETTER':
-        return ContentType.ARTICLE; // Default to ARTICLE if NEWSLETTER doesn't exist
+        return ContentType.NEWSLETTER;
       default:
         return ContentType.ARTICLE;
     }
