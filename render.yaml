@@ -24,3 +24,17 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # Observability - Logging
+      - key: LOG_LEVEL
+        value: "info"
+      - key: LOKI_HOST
+        sync: false
+      - key: LOKI_USERNAME
+        sync: false
+      - key: LOKI_PASSWORD
+        sync: false
+      # Observability - Tracing & Metrics (OTLP)
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false

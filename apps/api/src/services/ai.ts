@@ -1,7 +1,18 @@
 // apps/api/src/services/ai.ts
-// AI Content Generation Service using Google Gemini - Fixed TypeScript errors
+// AI Content Generation Service using Google Gemini — with observability
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { createLogger } from '../lib/logger';
+import {
+  contentGenerationDuration,
+  contentQualityScore,
+  geminiTokensUsed,
+  generationErrorsTotal,
+} from '../lib/metrics';
+
+const log = createLogger('ai-service');
+const tracer = trace.getTracer('ai-service');
 
 interface GenerationRequest {
   type: 'POST' | 'ARTICLE' | 'NEWSLETTER' | 'PAGE';
@@ -36,45 +47,141 @@ class AIService {
     if (!process.env.GEMINI_API_KEY) {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
-    
+
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
   async generateContent(request: GenerationRequest): Promise<GenerationResponse> {
-    try {
-      console.log('🤖 Starting AI content generation:', request);
+    const tone = request.tone || 'professional';
+    const length = request.length || 'medium';
 
-      const prompt = this.buildEnhancedPrompt(request);
-      console.log('📝 Generated enhanced prompt');
+    return tracer.startActiveSpan('ai.generateContent', async (parentSpan) => {
+      const timer = contentGenerationDuration.startTimer({
+        type: request.type,
+        tone,
+        length,
+      });
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      parentSpan.setAttributes({
+        'ai.content.type': request.type,
+        'ai.content.topic': request.topic,
+        'ai.content.tone': tone,
+        'ai.content.length': length,
+      });
 
-      console.log('✅ AI generation complete, parsing response...');
-      const parsedResponse = this.parseResponse(text, request);
-      
-      // Add quality assessment
-      const qualityScore = this.assessContentQuality(parsedResponse, request);
-      
-      // Return response with quality score and empty research sources for now
-      return {
-        ...parsedResponse,
-        qualityScore,
-        researchSources: [] // Empty array for now, can be enhanced later
-      };
-    } catch (error) {
-      console.error('❌ AI generation error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      throw new Error(`AI generation failed: ${errorMessage}`);
-    }
+      log.info({
+        event: 'content_generation_started',
+        contentType: request.type,
+        topic: request.topic,
+        tone,
+        length,
+      }, 'AI content generation started');
+
+      try {
+        const prompt = this.buildEnhancedPrompt(request);
+
+        // Wrap Gemini API call in its own span
+        const text = await tracer.startActiveSpan('ai.gemini.generateContent', async (geminiSpan) => {
+          geminiSpan.setAttribute('ai.model', 'gemini-2.5-flash');
+
+          const result = await this.model.generateContent(prompt);
+          const response = await result.response;
+          const responseText = response.text();
+
+          // Record token usage if available
+          if (result.response.usageMetadata) {
+            const usage = result.response.usageMetadata;
+            geminiSpan.setAttributes({
+              'ai.tokens.prompt': usage.promptTokenCount || 0,
+              'ai.tokens.completion': usage.candidatesTokenCount || 0,
+              'ai.tokens.total': usage.totalTokenCount || 0,
+            });
+            geminiTokensUsed.inc(
+              { operation: 'generate' },
+              usage.totalTokenCount || 0,
+            );
+          }
+
+          geminiSpan.end();
+          return responseText;
+        });
+
+        const parsedResponse = this.parseResponse(text, request);
+
+        // Wrap quality assessment in its own span
+        const qualityScore = tracer.startActiveSpan('ai.qualityAssessment', (qaSpan) => {
+          const score = this.assessContentQuality(parsedResponse, request);
+          qaSpan.setAttributes({
+            'score.value': score,
+            'score.passed': score >= 70,
+            'content.type': request.type,
+          });
+          qaSpan.end();
+          return score;
+        });
+
+        contentQualityScore.observe(
+          { type: request.type, tone },
+          qualityScore,
+        );
+
+        log.info({
+          event: 'quality_score_computed',
+          qualityScore,
+          wordCount: parsedResponse.wordCount,
+          contentType: request.type,
+        }, 'Content quality score computed');
+
+        timer({ status: 'success' });
+        parentSpan.setAttributes({
+          'ai.quality.score': qualityScore,
+          'ai.content.wordCount': parsedResponse.wordCount,
+        });
+        parentSpan.setStatus({ code: SpanStatusCode.OK });
+        parentSpan.end();
+
+        log.info({
+          event: 'content_generation_completed',
+          qualityScore,
+          wordCount: parsedResponse.wordCount,
+          contentType: request.type,
+        }, 'AI content generation completed');
+
+        return {
+          ...parsedResponse,
+          qualityScore,
+          researchSources: [],
+        };
+      } catch (error) {
+        timer({ status: 'error' });
+        generationErrorsTotal.inc({
+          type: request.type,
+          error_category: error instanceof Error && error.message.includes('quota')
+            ? 'rate_limit'
+            : 'generation_failure',
+        });
+
+        parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+        parentSpan.recordException(error as Error);
+        parentSpan.end();
+
+        log.error({
+          event: 'content_generation_failed',
+          err: error,
+          contentType: request.type,
+          topic: request.topic,
+        }, 'AI generation failed');
+
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        throw new Error(`AI generation failed: ${errorMessage}`);
+      }
+    });
   }
 
   private buildEnhancedPrompt(request: GenerationRequest): string {
     const { type, topic, tone = 'professional', length = 'medium', audience, keywords, includeOutline, includeSEO } = request;
 
-    // Enhanced templates with specific instructions
     const templates = {
       POST: 'Create an in-depth, well-researched blog post',
       ARTICLE: 'Write a comprehensive, expert-level article',
@@ -82,14 +189,12 @@ class AIService {
       PAGE: 'Create detailed webpage content'
     };
 
-    // Length specifications
     const lengthSpecs = {
       short: '400-600 words with focused, specific information',
-      medium: '800-1200 words with detailed explanations and examples', 
+      medium: '800-1200 words with detailed explanations and examples',
       long: '1500-2500 words with comprehensive coverage and analysis'
     };
 
-    // Tone descriptions
     const toneDescriptions = {
       professional: 'professional, authoritative, and expert-level',
       casual: 'casual, approachable, but still informative',
@@ -167,15 +272,10 @@ AVOID THESE COMMON ISSUES:
 
   private parseResponse(text: string, request: GenerationRequest): GenerationResponse {
     try {
-      // Clean the response - remove markdown code blocks if present
       const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
       const parsed = JSON.parse(cleanText);
-      
-      // Calculate word count
+
       const wordCount = this.calculateWordCount(parsed.content);
-      
-      // Calculate reading time (average 200 words per minute)
       const readingTime = Math.ceil(wordCount / 200);
 
       return {
@@ -190,10 +290,7 @@ AVOID THESE COMMON ISSUES:
         readingTime
       };
     } catch (error) {
-      console.error('❌ Failed to parse AI response:', error);
-      console.log('Raw response:', text);
-      
-      // Fallback: create a basic response from the raw text
+      log.error({ err: error, rawResponseLength: text.length }, 'Failed to parse AI response, using fallback');
       return this.createFallbackResponse(text, request);
     }
   }
@@ -201,7 +298,7 @@ AVOID THESE COMMON ISSUES:
   private createFallbackResponse(text: string, request: GenerationRequest): GenerationResponse {
     const wordCount = this.calculateWordCount(text);
     const readingTime = Math.ceil(wordCount / 200);
-    
+
     return {
       title: `${request.type}: ${request.topic}`,
       content: `<p>${text.replace(/\n/g, '</p><p>')}</p>`,
@@ -213,7 +310,6 @@ AVOID THESE COMMON ISSUES:
   }
 
   private calculateWordCount(text: string): number {
-    // Remove HTML tags and count words
     const plainText = text.replace(/<[^>]*>/g, '');
     return plainText.split(/\s+/).filter(word => word.length > 0).length;
   }
@@ -223,17 +319,15 @@ AVOID THESE COMMON ISSUES:
     const { content } = response;
     const { topic } = request;
 
-    // Check for repetitive title usage
     const titlePhrase = topic.toLowerCase();
     const contentLower = content.toLowerCase();
     const titleRepeats = (contentLower.match(new RegExp(titlePhrase, 'g')) || []).length;
-    
+
     if (titleRepeats > 5) {
-      score -= 30; // Major penalty for excessive title repetition
-      console.warn(`⚠️ Quality issue: Topic phrase repeated ${titleRepeats} times`);
+      score -= 30;
+      log.warn({ event: 'quality_issue_repetition', titleRepeats, topic }, 'Excessive topic repetition detected');
     }
 
-    // Check for generic filler phrases
     const fillerPhrases = [
       'in today\'s digital landscape',
       'comprehensive guide',
@@ -242,78 +336,94 @@ AVOID THESE COMMON ISSUES:
       'rapidly evolving',
       'increasingly important'
     ];
-    
-    const fillerCount = fillerPhrases.filter(phrase => 
+
+    const fillerCount = fillerPhrases.filter(phrase =>
       contentLower.includes(phrase.toLowerCase())
     ).length;
-    
+
     if (fillerCount > 2) {
       score -= (fillerCount * 10);
-      console.warn(`⚠️ Quality issue: ${fillerCount} generic filler phrases detected`);
+      log.warn({ event: 'quality_issue_filler', fillerCount }, 'Generic filler phrases detected');
     }
 
-    // Check content length vs expected
     const expectedWordCount = {
       short: { min: 400, max: 600 },
       medium: { min: 800, max: 1200 },
       long: { min: 1500, max: 2500 }
     };
-    
+
     const expected = expectedWordCount[request.length || 'medium'];
     if (response.wordCount < expected.min * 0.8) {
       score -= 15;
-      console.warn(`⚠️ Quality issue: Content too short (${response.wordCount} words)`);
+      log.warn({
+        event: 'quality_issue_length',
+        wordCount: response.wordCount,
+        expectedMin: expected.min,
+      }, 'Content shorter than expected');
     }
 
-    console.log(`📊 Content quality score: ${score}/100`);
     return score;
   }
 
   async validateContentBeforeSaving(content: GenerationResponse, topic: string): Promise<boolean> {
     const qualityScore = this.assessContentQuality(content, { topic, type: 'ARTICLE' });
-    
+
     if (qualityScore < 70) {
-      console.warn(`⚠️ Content quality too low (${qualityScore}/100) - consider regenerating`);
+      log.warn({ qualityScore, topic }, 'Content quality too low — consider regenerating');
       return false;
     }
-    
+
     return true;
   }
 
-  // Generate content ideas based on topic
   async generateContentIdeas(topic: string, count: number = 5): Promise<string[]> {
-    try {
-      const prompt = `Generate ${count} specific, research-worthy content ideas related to "${topic}". 
-      
-      Return as a JSON array of strings:
-      ["Specific Idea 1", "Detailed Idea 2", "Technical Idea 3", ...]
-      
-      Make each idea:
-      - Specific and focused on particular aspects of ${topic}
-      - Research-worthy with factual potential
-      - Valuable for experts and beginners
-      - Avoid generic "how-to" or "guide" titles
-      - Include technical or detailed angles`;
+    return tracer.startActiveSpan('ai.generateContentIdeas', async (span) => {
+      span.setAttribute('ai.topic', topic);
+      try {
+        const prompt = `Generate ${count} specific, research-worthy content ideas related to "${topic}".
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      return JSON.parse(text);
-    } catch (error) {
-      console.error('❌ Failed to generate content ideas:', error);
-      return [
-        `Technical Analysis of ${topic}`, 
-        `Performance Comparison: ${topic}`, 
-        `Expert Insights on ${topic}`
-      ];
-    }
+        Return as a JSON array of strings:
+        ["Specific Idea 1", "Detailed Idea 2", "Technical Idea 3", ...]
+
+        Make each idea:
+        - Specific and focused on particular aspects of ${topic}
+        - Research-worthy with factual potential
+        - Valuable for experts and beginners
+        - Avoid generic "how-to" or "guide" titles
+        - Include technical or detailed angles`;
+
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        if (result.response.usageMetadata) {
+          geminiTokensUsed.inc(
+            { operation: 'ideas' },
+            result.response.usageMetadata.totalTokenCount || 0,
+          );
+        }
+
+        span.setStatus({ code: SpanStatusCode.OK });
+        span.end();
+        return JSON.parse(text);
+      } catch (error) {
+        log.error({ err: error, topic }, 'Failed to generate content ideas');
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        span.recordException(error as Error);
+        span.end();
+        return [
+          `Technical Analysis of ${topic}`,
+          `Performance Comparison: ${topic}`,
+          `Expert Insights on ${topic}`
+        ];
+      }
+    });
   }
 
-  // Improve existing content
   async improveContent(content: string, improvements: string[]): Promise<string> {
-    try {
-      const prompt = `Improve the following content to eliminate generic filler and make it more specific and valuable:
+    return tracer.startActiveSpan('ai.improveContent', async (span) => {
+      try {
+        const prompt = `Improve the following content to eliminate generic filler and make it more specific and valuable:
 
 SPECIFIC IMPROVEMENTS NEEDED:
 ${improvements.join('\n')}
@@ -330,39 +440,67 @@ ${content}
 
 Return only the improved content in HTML format with enhanced specificity and value.`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error('❌ Failed to improve content:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      throw new Error(`Content improvement failed: ${errorMessage}`);
-    }
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+
+        if (result.response.usageMetadata) {
+          geminiTokensUsed.inc(
+            { operation: 'improve' },
+            result.response.usageMetadata.totalTokenCount || 0,
+          );
+        }
+
+        span.setStatus({ code: SpanStatusCode.OK });
+        span.end();
+        return response.text();
+      } catch (error) {
+        log.error({ err: error }, 'Failed to improve content');
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        span.recordException(error as Error);
+        span.end();
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        throw new Error(`Content improvement failed: ${errorMessage}`);
+      }
+    });
   }
 
-  // Generate SEO-optimized title variations
   async generateTitleVariations(topic: string, count: number = 5): Promise<string[]> {
-    try {
-      const prompt = `Generate ${count} SEO-optimized title variations for content about "${topic}".
-      
-      Return as a JSON array of strings:
-      ["Title 1", "Title 2", "Title 3", ...]
-      
-      Make each title:
-      - Under 60 characters
-      - Engaging and click-worthy
-      - Include relevant keywords
-      - Different styles (how-to, list, question, etc.)`;
+    return tracer.startActiveSpan('ai.generateTitleVariations', async (span) => {
+      span.setAttribute('ai.topic', topic);
+      try {
+        const prompt = `Generate ${count} SEO-optimized title variations for content about "${topic}".
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      return JSON.parse(text);
-    } catch (error) {
-      console.error('❌ Failed to generate title variations:', error);
-      return [`Ultimate Guide to ${topic}`, `How to Master ${topic}`, `${topic}: Complete Tutorial`];
-    }
+        Return as a JSON array of strings:
+        ["Title 1", "Title 2", "Title 3", ...]
+
+        Make each title:
+        - Under 60 characters
+        - Engaging and click-worthy
+        - Include relevant keywords
+        - Different styles (how-to, list, question, etc.)`;
+
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        if (result.response.usageMetadata) {
+          geminiTokensUsed.inc(
+            { operation: 'titles' },
+            result.response.usageMetadata.totalTokenCount || 0,
+          );
+        }
+
+        span.setStatus({ code: SpanStatusCode.OK });
+        span.end();
+        return JSON.parse(text);
+      } catch (error) {
+        log.error({ err: error, topic }, 'Failed to generate title variations');
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        span.recordException(error as Error);
+        span.end();
+        return [`Ultimate Guide to ${topic}`, `How to Master ${topic}`, `${topic}: Complete Tutorial`];
+      }
+    });
   }
 }
 

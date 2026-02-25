@@ -1,6 +1,8 @@
 import { PrismaClient, ContentStatus, ContentType, Content } from '@prisma/client';
+import { createLogger } from '../lib/logger';
 
 const prisma = new PrismaClient();
+const log = createLogger('services/content');
 
 export interface ContentFilters {
   organizationId: string;
@@ -74,7 +76,7 @@ export class ContentService {
   // Simple type mapping - just use what's available
   private mapContentType(frontendType: string): ContentType {
     // Log available types for debugging
-    console.log('Available ContentType enum values:', ContentType);
+    log.debug({ ContentType }, 'Mapping content type');
     
     // Use only the types that definitely exist in your schema
     switch (frontendType.toUpperCase()) {
@@ -94,7 +96,7 @@ export class ContentService {
   // Create new content - simplified version
   async createContent(data: ContentData) {
     try {
-      console.log('📝 Creating content with data:', data);
+      log.info({ title: data.title, type: data.type }, 'Creating content');
       
       // Generate slug if not provided
       if (!data.slug || data.slug.trim() === '') {
@@ -108,7 +110,7 @@ export class ContentService {
 
       // Map the content type
       const mappedType = data.type ? this.mapContentType(data.type.toString()) : ContentType.ARTICLE;
-      console.log('🔄 Mapped type:', mappedType);
+      log.debug({ mappedType }, 'Content type mapped');
 
       const contentToCreate = {
         title: data.title,
@@ -126,7 +128,7 @@ export class ContentService {
         publishedAt: data.status === ContentStatus.PUBLISHED ? new Date() : null
       };
 
-      console.log('💾 Saving content to database:', contentToCreate);
+      log.debug({ slug: contentToCreate.slug, type: contentToCreate.type }, 'Saving content to database');
 
       const content = await prisma.content.create({
         data: contentToCreate,
@@ -142,10 +144,10 @@ export class ContentService {
         }
       });
 
-      console.log('✅ Content created successfully:', content);
+      log.info({ contentId: content.id }, 'Content created successfully');
       return content;
     } catch (error) {
-      console.error('❌ Error creating content:', error);
+      log.error({ err: error }, 'Error creating content');
       throw error;
     }
   }
@@ -217,7 +219,7 @@ export class ContentService {
         }
       };
     } catch (error) {
-      console.error('Error fetching content:', error);
+      log.error({ err: error }, 'Error fetching content');
       throw error;
     }
   }
@@ -242,7 +244,7 @@ export class ContentService {
         }
       });
     } catch (error) {
-      console.error('Error fetching content by ID:', error);
+      log.error({ err: error }, 'Error fetching content by ID');
       throw error;
     }
   }
@@ -297,7 +299,7 @@ export class ContentService {
 
       return content;
     } catch (error) {
-      console.error('Error updating content:', error);
+      log.error({ err: error }, 'Error updating content');
       throw error;
     }
   }
@@ -319,7 +321,7 @@ export class ContentService {
 
       return true;
     } catch (error) {
-      console.error('Error deleting content:', error);
+      log.error({ err: error }, 'Error deleting content');
       throw error;
     }
   }
@@ -331,7 +333,7 @@ export class ContentService {
         status: ContentStatus.PUBLISHED
       }, organizationId);
     } catch (error) {
-      console.error('Error publishing content:', error);
+      log.error({ err: error }, 'Error publishing content');
       throw error;
     }
   }
@@ -343,7 +345,7 @@ export class ContentService {
         status: ContentStatus.DRAFT
       }, organizationId);
     } catch (error) {
-      console.error('Error unpublishing content:', error);
+      log.error({ err: error }, 'Error unpublishing content');
       throw error;
     }
   }
@@ -389,7 +391,7 @@ export class ContentService {
         recentContent
       };
     } catch (error) {
-      console.error('Error fetching content stats:', error);
+      log.error({ err: error }, 'Error fetching content stats');
       throw error;
     }
   }

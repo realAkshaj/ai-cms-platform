@@ -1,10 +1,16 @@
+import './instrumentation'; // Must be first import — registers OTel auto-instrumentation
+
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import pinoHttp from 'pino-http';
+import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import { logger, createLogger } from './lib/logger';
+import { registry } from './lib/metrics';
 import contentRoutes from './routes/content';
-import aiRoutes from './routes/ai'; // ADD THIS LINE
+import aiRoutes from './routes/ai';
 import publicRoutes from './routes/public';
 
 // Load environment variables
@@ -12,6 +18,8 @@ dotenv.config();
 
 // Import routes
 import authRoutes from './routes/auth';
+
+const log = createLogger('server');
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
@@ -29,12 +37,41 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Health check endpoint
-app.get('/health', async (req, res) => {
+// Structured request/response logging with request ID
+app.use(
+  pinoHttp({
+    logger,
+    genReqId: (req) => (req.headers['x-request-id'] as string) || uuidv4(),
+    autoLogging: {
+      ignore: (req) => req.url === '/health' || req.url === '/metrics',
+    },
+    customLogLevel: (_req, res, err) => {
+      if (res.statusCode >= 500 || err) return 'error';
+      if (res.statusCode >= 400) return 'warn';
+      return 'info';
+    },
+    serializers: {
+      req: (req: any) => ({ method: req.method, url: req.url }),
+      res: (res: any) => ({ statusCode: res.statusCode }),
+    },
+  })
+);
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (_req, res) => {
   try {
-    // Test database connection
+    res.set('Content-Type', registry.contentType);
+    res.end(await registry.metrics());
+  } catch {
+    res.status(500).end();
+  }
+});
+
+// Health check endpoint
+app.get('/health', async (_req, res) => {
+  try {
     await prisma.$queryRaw`SELECT 1`;
-    
+
     res.status(200).json({
       status: 'OK',
       database: 'Connected',
@@ -42,7 +79,7 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development'
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({
       status: 'ERROR',
       database: 'Disconnected',
@@ -53,8 +90,8 @@ app.get('/health', async (req, res) => {
 });
 
 // API test endpoint
-app.get('/api/test', (req, res) => {
-  res.json({ 
+app.get('/api/test', (_req, res) => {
+  res.json({
     message: 'API is working!',
     features: ['Auth', 'Content', 'AI Generation'],
     timestamp: new Date().toISOString()
@@ -62,11 +99,10 @@ app.get('/api/test', (req, res) => {
 });
 
 // Test database endpoint
-app.get('/api/db-test', async (req, res) => {
+app.get('/api/db-test', async (_req, res) => {
   try {
-    // Get count of organizations (should be 0 initially)
     const orgCount = await prisma.organization.count();
-    
+
     res.json({
       message: 'Database connection successful!',
       organizationCount: orgCount,
@@ -84,7 +120,7 @@ app.get('/api/db-test', async (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes);
-app.use('/api/ai', aiRoutes); // ADD THIS LINE
+app.use('/api/ai', aiRoutes);
 app.use('/api/public', publicRoutes);
 
 // 404 handler
@@ -92,7 +128,7 @@ app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,
-    availableRoutes: ['/api/auth', '/api/content', '/api/ai', '/api/public', '/health']
+    availableRoutes: ['/api/auth', '/api/content', '/api/ai', '/api/public', '/health', '/metrics']
   });
 });
 
@@ -104,21 +140,18 @@ process.on('beforeExit', async () => {
 // Start server
 const startServer = async () => {
   try {
-    // Test database connection
     await prisma.$connect();
-    console.log('📊 Database connected successfully');
-    
+    log.info('Database connected successfully');
+
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`📚 API test: http://localhost:${PORT}/api/test`);
-      console.log(`💾 Database test: http://localhost:${PORT}/api/db-test`);
-      console.log(`🤖 AI API: http://localhost:${PORT}/api/ai`); // ADD THIS LINE
-      console.log(`🧠 Gemini AI: ${process.env.GEMINI_API_KEY ? 'Enabled' : 'Not configured'}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      log.info({
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        ai: process.env.GEMINI_API_KEY ? 'enabled' : 'not configured',
+      }, 'Server started');
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    log.fatal({ err: error }, 'Failed to start server');
     process.exit(1);
   }
 };
