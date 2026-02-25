@@ -2,10 +2,12 @@ import { Router, Request, Response } from 'express';
 import { ContentService } from '../services/content';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import { PrismaClient } from '@prisma/client';
+import { createLogger } from '../lib/logger';
 
 const router = Router();
 const contentService = new ContentService();
 const prisma = new PrismaClient();
+const log = createLogger('routes/content');
 
 // Lazy-load AI service to avoid crashing if GEMINI_API_KEY is not set
 let enhancedAIService: any = null;
@@ -14,20 +16,19 @@ function getAIService() {
     try {
       enhancedAIService = require('../services/ai').default;
     } catch (error) {
-      console.warn('⚠️ AI service not available:', error instanceof Error ? error.message : error);
+      log.warn({ err: error instanceof Error ? error.message : error }, 'AI service not available');
     }
   }
   return enhancedAIService;
 }
 
-console.log('📝 Content routes loaded!');
+log.info('Content routes loaded');
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
 
 // Test route to verify routes are working
 router.get('/test', (req: AuthRequest, res: Response) => {
-  console.log('🧪 Content test route hit!');
   res.json({
     success: true,
     message: 'Content routes are working!',
@@ -42,7 +43,6 @@ router.get('/test', (req: AuthRequest, res: Response) => {
 // GET /api/content/analytics/stats - Get content statistics
 router.get('/analytics/stats', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('📊 GET /api/content/analytics/stats - Get content statistics');
     const organizationId = req.user!.organizationId;
 
     const [total, published, draft, archived] = await Promise.all([
@@ -111,14 +111,12 @@ router.get('/analytics/stats', async (req: AuthRequest, res: Response) => {
       }))
     };
 
-    console.log('✅ Content statistics calculated');
-
     res.json({
       success: true,
       data: stats
     });
   } catch (error) {
-    console.error('❌ Error fetching content stats:', error);
+    log.error({ err: error }, 'Error fetching content stats');
     res.json({
       success: true,
       data: {
@@ -148,7 +146,7 @@ router.get('/stats/simple', async (req: AuthRequest, res: Response) => {
 
     res.json({ total, published, draft, archived: 0 });
   } catch (error) {
-    console.error('❌ Simple stats error:', error);
+    log.error({ err: error }, 'Simple stats error');
     res.json({ total: 0, published: 0, draft: 0, archived: 0 });
   }
 });
@@ -156,7 +154,7 @@ router.get('/stats/simple', async (req: AuthRequest, res: Response) => {
 // POST /api/content/generate - AI Content Generation
 router.post('/generate', async (req: AuthRequest, res: Response) => {
   try {
-    console.log('🤖 POST /api/content/generate - AI content generation request');
+    log.info({ topic: req.body.topic, type: req.body.type }, 'AI content generation request via content route');
 
     const aiService = getAIService();
     if (!aiService) {
@@ -233,7 +231,7 @@ router.post('/generate', async (req: AuthRequest, res: Response) => {
     });
 
   } catch (error: unknown) {
-    console.error('❌ Error generating AI content:', error);
+    log.error({ err: error }, 'Error generating AI content');
 
     let message = 'Failed to generate AI content';
     let statusCode = 500;
@@ -277,7 +275,7 @@ router.post('/ideas', async (req: AuthRequest, res: Response) => {
       message: 'Content ideas generated successfully'
     });
   } catch (error: unknown) {
-    console.error('❌ Error generating content ideas:', error);
+    log.error({ err: error }, 'Error generating content ideas');
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to generate content ideas'
@@ -313,7 +311,7 @@ router.post('/improve', async (req: AuthRequest, res: Response) => {
       message: 'Content improved successfully'
     });
   } catch (error: unknown) {
-    console.error('❌ Error improving content:', error);
+    log.error({ err: error }, 'Error improving content');
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to improve content'
@@ -342,7 +340,7 @@ router.post('/titles', async (req: AuthRequest, res: Response) => {
       message: 'Title variations generated successfully'
     });
   } catch (error: unknown) {
-    console.error('❌ Error generating titles:', error);
+    log.error({ err: error }, 'Error generating titles');
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to generate title variations'
@@ -393,7 +391,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       data: result
     });
   } catch (error: unknown) {
-    console.error('❌ Error fetching content:', error);
+    log.error({ err: error }, 'Error fetching content');
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to fetch content'
@@ -428,7 +426,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       message: 'Content created successfully'
     });
   } catch (error: unknown) {
-    console.error('❌ Error creating content:', error);
+    log.error({ err: error }, 'Error creating content');
 
     let message = 'Failed to create content';
     let statusCode = 500;
@@ -467,7 +465,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
       data: content
     });
   } catch (error: unknown) {
-    console.error('Error fetching content:', error);
+    log.error({ err: error }, 'Error fetching content');
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to fetch content'
@@ -496,7 +494,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       message: 'Content updated successfully'
     });
   } catch (error: unknown) {
-    console.error('Error updating content:', error);
+    log.error({ err: error }, 'Error updating content');
 
     let message = 'Failed to update content';
     let statusCode = 500;
@@ -532,7 +530,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
       message: 'Content deleted successfully'
     });
   } catch (error: unknown) {
-    console.error('Error deleting content:', error);
+    log.error({ err: error }, 'Error deleting content');
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to delete content'
@@ -561,7 +559,7 @@ router.post('/:id/publish', async (req: AuthRequest, res: Response) => {
       message: 'Content published successfully'
     });
   } catch (error: unknown) {
-    console.error('Error publishing content:', error);
+    log.error({ err: error }, 'Error publishing content');
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to publish content'
@@ -569,6 +567,6 @@ router.post('/:id/publish', async (req: AuthRequest, res: Response) => {
   }
 });
 
-console.log('✅ Content routes setup complete with AI features!');
+log.info('Content routes initialized');
 
 export default router;

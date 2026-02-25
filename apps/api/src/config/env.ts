@@ -49,6 +49,19 @@ export const config = {
     googleCloudApiKey: process.env.GOOGLE_CLOUD_API_KEY,
   },
 
+  // Observability
+  observability: {
+    logLevel: process.env.LOG_LEVEL || 'info',
+    lokiHost: process.env.LOKI_HOST,
+    lokiUsername: process.env.LOKI_USERNAME,
+    lokiPassword: process.env.LOKI_PASSWORD,
+    otelEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    otelHeaders: process.env.OTEL_EXPORTER_OTLP_HEADERS,
+    prometheusRemoteWriteUrl: process.env.PROMETHEUS_REMOTE_WRITE_URL,
+    prometheusUsername: process.env.PROMETHEUS_USERNAME,
+    prometheusPassword: process.env.PROMETHEUS_PASSWORD,
+  },
+
   // Email
   email: {
     smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',

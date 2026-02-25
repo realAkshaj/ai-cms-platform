@@ -2,37 +2,33 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../middleware/auth';
+import { createLogger } from '../lib/logger';
 
 const router = Router();
 const prisma = new PrismaClient();
+const log = createLogger('routes/auth');
 
 // POST /api/auth/register - Register new user and organization
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    console.log('🚀 Registration attempt started');
-    console.log('Request body:', req.body);
-    
     const { email, password, firstName, lastName, organizationName } = req.body;
+
+    log.info({ email }, 'Registration attempt');
 
     // Validate required fields (organizationName is optional - we'll generate it)
     if (!email || !password || !firstName || !lastName) {
-      console.log('❌ Missing required fields');
       return res.status(400).json({
         success: false,
         message: 'Email, password, first name, and last name are required'
       });
     }
 
-    console.log('✅ All required fields present');
-
     // Generate organization name if not provided
     const finalOrganizationName = organizationName || `${firstName}'s Organization`;
-    console.log('📝 Organization name:', finalOrganizationName);
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      console.log('❌ Invalid email format');
       return res.status(400).json({
         success: false,
         message: 'Invalid email format'
@@ -41,14 +37,11 @@ router.post('/register', async (req: Request, res: Response) => {
 
     // Validate password length
     if (password.length < 6) {
-      console.log('❌ Password too short');
       return res.status(400).json({
         success: false,
         message: 'Password must be at least 6 characters long'
       });
     }
-
-    console.log('✅ Validation passed, checking existing user');
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -56,14 +49,12 @@ router.post('/register', async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      console.log('❌ User already exists');
+      log.warn({ email }, 'Registration failed: user exists');
       return res.status(409).json({
         success: false,
         message: 'User with this email already exists'
       });
     }
-
-    console.log('✅ User does not exist, creating new user');
 
     // Generate organization slug
     const orgSlug = finalOrganizationName
@@ -79,17 +70,11 @@ router.post('/register', async (req: Request, res: Response) => {
       counter++;
     }
 
-    console.log('✅ Organization slug generated:', finalSlug);
-
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log('✅ Password hashed');
 
     // Create organization and user in transaction
-    console.log('🔄 Starting database transaction');
     const result = await prisma.$transaction(async (tx) => {
-      // Create organization
-      console.log('📝 Creating organization');
       const organization = await tx.organization.create({
         data: {
           name: finalOrganizationName,
@@ -97,8 +82,6 @@ router.post('/register', async (req: Request, res: Response) => {
         }
       });
 
-      // Create user
-      console.log('👤 Creating user');
       const user = await tx.user.create({
         data: {
           email,
@@ -121,8 +104,6 @@ router.post('/register', async (req: Request, res: Response) => {
       return { user, organization };
     });
 
-    console.log('✅ Transaction completed successfully');
-
     // Generate JWT token
     const accessToken = generateToken({
       userId: result.user.id,
@@ -130,7 +111,7 @@ router.post('/register', async (req: Request, res: Response) => {
       organizationId: result.user.organizationId
     });
 
-    console.log('✅ JWT token generated');
+    log.info({ userId: result.user.id, orgId: result.organization.id }, 'Registration successful');
 
     const responseData = {
       user: {
@@ -144,8 +125,6 @@ router.post('/register', async (req: Request, res: Response) => {
       accessToken
     };
 
-    console.log('🎉 Registration successful!');
-
     res.status(201).json({
       success: true,
       data: responseData,
@@ -153,7 +132,7 @@ router.post('/register', async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('💥 Registration error:', error);
+    log.error({ err: error }, 'Registration error');
     res.status(500).json({
       success: false,
       message: 'Failed to register user',
@@ -165,21 +144,17 @@ router.post('/register', async (req: Request, res: Response) => {
 // POST /api/auth/login - Login user
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    console.log('🔑 Login attempt started');
-    console.log('Login email:', req.body.email);
-    
     const { email, password } = req.body;
+
+    log.info({ email }, 'Login attempt');
 
     // Validate required fields
     if (!email || !password) {
-      console.log('❌ Missing email or password');
       return res.status(400).json({
         success: false,
         message: 'Email and password are required'
       });
     }
-
-    console.log('✅ Email and password provided');
 
     // Find user with organization
     const user = await prisma.user.findUnique({
@@ -196,26 +171,22 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      console.log('❌ User not found');
+      log.warn({ email }, 'Login failed: invalid credentials');
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
-
-    console.log('✅ User found');
 
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      console.log('❌ Invalid password');
+      log.warn({ email }, 'Login failed: invalid credentials');
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
-
-    console.log('✅ Password valid');
 
     // Generate JWT token
     const accessToken = generateToken({
@@ -224,7 +195,7 @@ router.post('/login', async (req: Request, res: Response) => {
       organizationId: user.organizationId
     });
 
-    console.log('✅ JWT token generated');
+    log.info({ userId: user.id }, 'Login successful');
 
     const responseData = {
       user: {
@@ -238,8 +209,6 @@ router.post('/login', async (req: Request, res: Response) => {
       accessToken
     };
 
-    console.log('🎉 Login successful!');
-
     res.json({
       success: true,
       data: responseData,
@@ -247,7 +216,7 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('💥 Login error:', error);
+    log.error({ err: error }, 'Login error');
     res.status(500).json({
       success: false,
       message: 'Failed to login',
@@ -258,7 +227,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
 // POST /api/auth/logout - Logout user
 router.post('/logout', (req: Request, res: Response) => {
-  console.log('👋 Logout request');
+  log.info('Logout request');
   res.json({
     success: true,
     message: 'Logout successful'

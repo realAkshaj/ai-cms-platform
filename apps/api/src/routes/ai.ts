@@ -1,8 +1,12 @@
 // apps/api/src/routes/ai.ts
 import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { createLogger } from '../lib/logger';
+import { contentRegenerationTotal } from '../lib/metrics';
 
-console.log('🤖 Loading AI routes...');
+const log = createLogger('routes/ai');
+
+log.info('Loading AI routes');
 
 const router = Router();
 
@@ -13,7 +17,7 @@ function getAIService() {
     try {
       aiService = require('../services/ai').default;
     } catch (error) {
-      console.warn('⚠️ AI service not available:', error instanceof Error ? error.message : error);
+      log.warn({ err: error instanceof Error ? error.message : error }, 'AI service not available');
     }
   }
   return aiService;
@@ -23,24 +27,24 @@ function getAIService() {
 router.get('/status', async (req, res: Response) => {
   try {
     const hasApiKey = !!process.env.GEMINI_API_KEY;
-    
+
     res.json({
       success: true,
       data: {
         aiEnabled: hasApiKey,
         provider: 'Google Gemini',
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         features: [
           'Content Generation',
           'Content Ideas',
-          'Content Improvement', 
+          'Content Improvement',
           'Title Generation'
         ],
         apiKeyConfigured: hasApiKey
       }
     });
   } catch (error) {
-    console.error('❌ AI status check error:', error);
+    log.error({ err: error }, 'AI status check failed');
     res.status(500).json({
       success: false,
       message: 'Failed to check AI status'
@@ -50,7 +54,7 @@ router.get('/status', async (req, res: Response) => {
 
 // GET /api/ai - Basic info endpoint
 router.get('/', (req, res: Response) => {
-  res.json({ 
+  res.json({
     message: 'AI Content Generation API',
     version: '1.0.0',
     endpoints: [
@@ -79,7 +83,7 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ AI test error:', error);
+    log.error({ err: error }, 'AI test endpoint failed');
     res.status(500).json({
       success: false,
       message: 'AI test failed'
@@ -90,8 +94,9 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
 // POST /api/ai/generate - Generate content using REAL AI (requires auth)
 router.post('/generate', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    console.log('🤖 AI Generate Request:', req.body);
-    console.log('👤 User:', req.user?.email);
+    const { topic, type = 'ARTICLE', tone = 'professional', length = 'medium' } = req.body;
+
+    log.info({ topic, type, tone, length, userId: req.user?.id }, 'AI generate request received');
 
     // Check if Gemini API key is configured
     if (!process.env.GEMINI_API_KEY) {
@@ -102,10 +107,6 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
     }
 
     const {
-      type = 'ARTICLE',
-      topic,
-      tone = 'professional',
-      length = 'medium',
       audience,
       keywords,
       includeOutline = true,
@@ -120,9 +121,8 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
       });
     }
 
-    console.log('🎯 Generating REAL AI content for:', topic);
+    log.info({ topic, type, tone, length }, 'Starting AI content generation');
 
-    // Use your REAL AI service instead of mock response
     const generationRequest = {
       type: type as 'POST' | 'ARTICLE' | 'NEWSLETTER' | 'PAGE',
       topic,
@@ -139,30 +139,26 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
       return res.status(503).json({ success: false, message: 'AI service not available' });
     }
 
-    // Generate content using your enhanced AI service
     const aiResult = await ai.generateContent(generationRequest);
 
-    console.log('✅ REAL AI content generated successfully');
-    if (aiResult.qualityScore) {
-      console.log('📊 Quality score:', aiResult.qualityScore);
-    }
+    log.info({ qualityScore: aiResult.qualityScore, wordCount: aiResult.wordCount }, 'AI content generated');
 
     // Validate content quality
     const isValid = await ai.validateContentBeforeSaving(aiResult, topic);
 
     if (!isValid && aiResult.qualityScore && aiResult.qualityScore < 70) {
-      console.log('🔄 Content quality low, regenerating with enhanced prompt...');
+      log.info({ qualityScore: aiResult.qualityScore, type, originalTone: tone }, 'Quality below threshold, regenerating');
+      contentRegenerationTotal.inc({ type, original_tone: tone });
 
-      // Try again with more authoritative tone for better content
       const betterRequest = {
         ...generationRequest,
         tone: 'authoritative' as const
       };
 
       const betterResult = await ai.generateContent(betterRequest);
-      
-      console.log('🎯 Regenerated content with quality score:', betterResult.qualityScore);
-      
+
+      log.info({ qualityScore: betterResult.qualityScore, regenerated: true }, 'Content regenerated');
+
       return res.json({
         success: true,
         data: betterResult,
@@ -187,21 +183,20 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
     });
 
   } catch (error: unknown) {
-    console.error('❌ AI generation error:', error);
-    
+    log.error({ err: error }, 'AI generation endpoint error');
+
     let message = 'Failed to generate AI content';
     let statusCode = 500;
 
     if (error instanceof Error) {
       message = error.message;
-      
-      // Handle specific AI service errors
+
       if (message.includes('API key') || message.includes('GEMINI_API_KEY')) {
         message = 'AI service configuration error';
-        statusCode = 503; // Service Unavailable
+        statusCode = 503;
       } else if (message.includes('quota') || message.includes('rate limit')) {
         message = 'AI service temporarily unavailable due to rate limits';
-        statusCode = 429; // Too Many Requests
+        statusCode = 429;
       }
     }
 
@@ -216,9 +211,8 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res: Respon
 // POST /api/ai/ideas - Generate content ideas using REAL AI (requires auth)
 router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    console.log('💡 AI Ideas Request:', req.body);
-    
     const { topic, count = 5 } = req.body;
+    log.info({ topic }, 'Content ideas request');
 
     if (!topic) {
       return res.status(400).json({
@@ -236,7 +230,7 @@ router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response)
 
     res.json({
       success: true,
-      data: { 
+      data: {
         ideas,
         topic: topic,
         count: ideas.length
@@ -245,8 +239,8 @@ router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response)
     });
 
   } catch (error: unknown) {
-    console.error('❌ AI ideas generation error:', error);
-    
+    log.error({ err: error }, 'Ideas generation failed');
+
     let message = 'Failed to generate content ideas';
     if (error instanceof Error) {
       message = error.message;
@@ -262,9 +256,8 @@ router.post('/ideas', authenticateToken, async (req: AuthRequest, res: Response)
 // POST /api/ai/titles - Generate title variations using REAL AI (requires auth)
 router.post('/titles', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    console.log('📝 AI Titles Request:', req.body);
-    
     const { topic, count = 5 } = req.body;
+    log.info({ topic }, 'Title variations request');
 
     if (!topic) {
       return res.status(400).json({
@@ -282,7 +275,7 @@ router.post('/titles', authenticateToken, async (req: AuthRequest, res: Response
 
     res.json({
       success: true,
-      data: { 
+      data: {
         titles,
         topic: topic,
         count: titles.length
@@ -291,8 +284,8 @@ router.post('/titles', authenticateToken, async (req: AuthRequest, res: Response
     });
 
   } catch (error: unknown) {
-    console.error('❌ Title generation error:', error);
-    
+    log.error({ err: error }, 'Title generation failed');
+
     let message = 'Failed to generate title variations';
     if (error instanceof Error) {
       message = error.message;
@@ -308,8 +301,8 @@ router.post('/titles', authenticateToken, async (req: AuthRequest, res: Response
 // POST /api/ai/improve - Improve existing content using REAL AI (requires auth)
 router.post('/improve', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    console.log('✨ AI Improve Request:', req.body);
-    
+    log.info('Content improvement request received');
+
     const { content, improvements } = req.body;
 
     if (!content) {
@@ -344,8 +337,8 @@ router.post('/improve', authenticateToken, async (req: AuthRequest, res: Respons
     });
 
   } catch (error: unknown) {
-    console.error('❌ Content improvement error:', error);
-    
+    log.error({ err: error }, 'Content improvement failed');
+
     let message = 'Failed to improve content';
     if (error instanceof Error) {
       message = error.message;
@@ -358,6 +351,6 @@ router.post('/improve', authenticateToken, async (req: AuthRequest, res: Respons
   }
 });
 
-console.log('🤖 AI routes loaded successfully with REAL Gemini integration!');
+log.info('AI routes loaded');
 
 export default router;

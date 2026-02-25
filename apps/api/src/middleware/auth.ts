@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { createLogger } from '../lib/logger';
 
 const prisma = new PrismaClient();
+const log = createLogger('middleware/auth');
 
 export interface AuthRequest extends Request {
   user?: {
@@ -40,7 +42,7 @@ export const authenticateToken = async (
 
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      console.error('JWT_SECRET environment variable is not set');
+      log.fatal('JWT_SECRET not configured');
       return res.status(500).json({
         success: false,
         message: 'Server configuration error'
@@ -82,7 +84,7 @@ export const authenticateToken = async (
 
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    log.warn({ err: error }, 'Authentication failed');
 
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({
@@ -139,7 +141,7 @@ export const requireAdmin = async (
 
     next();
   } catch (error) {
-    console.error('Admin check error:', error);
+    log.error({ err: error }, 'Admin authorization check failed');
     return res.status(500).json({
       success: false,
       message: 'Authorization check failed'

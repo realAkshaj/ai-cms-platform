@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { createLogger } from '../lib/logger';
 
 const router = Router();
 const prisma = new PrismaClient();
+const log = createLogger('routes/public');
 
 // GET /api/public/posts - List published content (no auth required)
 router.get('/posts', async (req: Request, res: Response) => {
@@ -84,7 +86,7 @@ router.get('/posts', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching public posts:', error);
+    log.error({ err: error }, 'Failed to fetch public posts');
     res.status(500).json({
       success: false,
       message: 'Failed to fetch posts',
@@ -148,7 +150,7 @@ router.get('/posts/:id', async (req: Request, res: Response) => {
       data: { ...post, views: post.views + 1 },
     });
   } catch (error) {
-    console.error('Error fetching public post:', error);
+    log.error({ err: error }, 'Failed to fetch public post');
     res.status(500).json({
       success: false,
       message: 'Failed to fetch post',
