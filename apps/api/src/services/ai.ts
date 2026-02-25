@@ -272,7 +272,24 @@ AVOID THESE COMMON ISSUES:
 
   private parseResponse(text: string, request: GenerationRequest): GenerationResponse {
     try {
-      const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Extract JSON from the response, handling various Gemini output formats:
+      // 1. Raw JSON
+      // 2. ```json ... ```
+      // 3. Text before/after the JSON block
+      let cleanText = text;
+
+      // Try to extract JSON from a code block first
+      const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+      if (codeBlockMatch) {
+        cleanText = codeBlockMatch[1].trim();
+      } else {
+        // No code block — try to extract the JSON object directly
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanText = jsonMatch[0];
+        }
+      }
+
       const parsed = JSON.parse(cleanText);
 
       const wordCount = this.calculateWordCount(parsed.content);
