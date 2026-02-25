@@ -1,26 +1,26 @@
 import pino from 'pino';
 import type { TransportTargetOptions } from 'pino';
-import { resolve } from 'path';
 
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const SERVICE_NAME = 'ai-cms-api';
 const SERVICE_VERSION = process.env.npm_package_version || '1.0.0';
 
-// Resolve pino-loki path to handle monorepo hoisting
-function resolvePinoLoki(): string {
-  try {
-    return require.resolve('pino-loki');
-  } catch {
-    return 'pino-loki';
-  }
+// Resolve pino-loki absolute path for monorepo hoisting compatibility.
+// Pino transports run in a worker thread that resolves modules from CWD,
+// which may differ from where the package is actually installed in a monorepo.
+let pinoLokiTarget = 'pino-loki';
+try {
+  pinoLokiTarget = require.resolve('pino-loki');
+} catch {
+  // Fall back to bare specifier
 }
 
-// Build transport targets
+// Build transport targets — always include stdout
 const targets: TransportTargetOptions[] = [
   {
     target: 'pino/file',
-    options: { destination: 1 }, // stdout
+    options: { destination: 1 },
     level: LOG_LEVEL,
   },
 ];
@@ -28,7 +28,7 @@ const targets: TransportTargetOptions[] = [
 // Optional: Loki transport for Grafana Cloud
 if (process.env.LOKI_HOST) {
   targets.push({
-    target: resolvePinoLoki(),
+    target: pinoLokiTarget,
     options: {
       host: process.env.LOKI_HOST,
       basicAuth: {
@@ -43,6 +43,7 @@ if (process.env.LOKI_HOST) {
   });
 }
 
+// Use multi-target when Loki is configured, single target otherwise
 const transport = targets.length > 1
   ? pino.transport({ targets })
   : pino.transport(targets[0]);
