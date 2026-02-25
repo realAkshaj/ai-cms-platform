@@ -22,7 +22,7 @@ import authRoutes from './routes/auth';
 const log = createLogger('server');
 
 const app = express();
-const PORT = process.env.API_PORT || 3001;
+const PORT = process.env.PORT || process.env.API_PORT || 3001;
 
 // Initialize Prisma
 const prisma = new PrismaClient();
