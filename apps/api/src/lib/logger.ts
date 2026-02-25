@@ -1,10 +1,20 @@
 import pino from 'pino';
 import type { TransportTargetOptions } from 'pino';
+import { resolve } from 'path';
 
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const SERVICE_NAME = 'ai-cms-api';
 const SERVICE_VERSION = process.env.npm_package_version || '1.0.0';
+
+// Resolve pino-loki path to handle monorepo hoisting
+function resolvePinoLoki(): string {
+  try {
+    return require.resolve('pino-loki');
+  } catch {
+    return 'pino-loki';
+  }
+}
 
 // Build transport targets
 const targets: TransportTargetOptions[] = [
@@ -18,7 +28,7 @@ const targets: TransportTargetOptions[] = [
 // Optional: Loki transport for Grafana Cloud
 if (process.env.LOKI_HOST) {
   targets.push({
-    target: 'pino-loki',
+    target: resolvePinoLoki(),
     options: {
       host: process.env.LOKI_HOST,
       basicAuth: {
