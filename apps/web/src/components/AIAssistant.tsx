@@ -121,145 +121,206 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
 
   const insertTitle = (title: string) => {
     if (onContentGenerated) onContentGenerated({ title });
+    setIsOpen(false);
   };
 
-  const labelStyle: React.CSSProperties = {
-    display: 'block', fontSize: '12px', fontWeight: '500',
-    color: 'var(--text-muted)', marginBottom: '8px',
-    textTransform: 'uppercase', letterSpacing: '0.05em',
-  };
-
-  const tabs = [
-    { key: 'generate' as const, label: 'Generate', icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-      </svg>
-    )},
-    { key: 'ideas' as const, label: 'Ideas', icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18h6"/><path d="M10 22h4"/>
-        <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
-      </svg>
-    )},
-    { key: 'titles' as const, label: 'Titles', icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-    )},
-  ];
-
-  // --- Floating button (closed state) ---
+  // --- FAB Button (Terminal style) ---
   if (!isOpen) {
     return (
       <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000 }}>
         <button
           onClick={() => setIsOpen(true)}
-          className="btn-gradient ai-fab"
-          style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 32px rgba(59, 130, 246, 0.3)',
-            padding: 0, border: 'none',
-          }}
+          className="ai-fab"
+          title="Open AI Assistant"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-          </svg>
+          AI
         </button>
       </div>
     );
   }
 
-  // --- Open panel ---
+  // --- Terminal Panel ---
   return (
     <div style={{
-      position: 'fixed', top: 0, right: 0, width: '420px', height: '100vh',
-      background: 'var(--bg-surface)', borderLeft: '1px solid var(--glass-border)',
-      boxShadow: '-8px 0 40px rgba(0, 0, 0, 0.4)', zIndex: 1000,
-      display: 'flex', flexDirection: 'column', isolation: 'isolate',
+      position: 'fixed',
+      top: 0,
+      right: 0,
+      width: '440px',
+      height: '100vh',
+      background: 'linear-gradient(180deg, #0f0e0d 0%, #1a1816 100%)',
+      borderLeft: '4px solid var(--accent-secondary)',
+      boxShadow: '-12px 0 48px rgba(0, 0, 0, 0.8), inset 0 0 100px rgba(212, 255, 0, 0.02)',
+      zIndex: 1000,
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'var(--font-mono)',
     }}>
-      {/* Header */}
+      {/* Terminal Header */}
       <div style={{
-        padding: '20px 24px', borderBottom: '1px solid var(--glass-border)',
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))',
+        padding: '16px 20px',
+        borderBottom: '2px solid var(--accent-secondary)',
+        background: '#0f0e0d',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg>
-            AI Assistant
-          </h2>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <div>
+            <h2 style={{
+              margin: '0 0 4px 0',
+              fontSize: '14px',
+              fontWeight: '700',
+              color: 'var(--accent-secondary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+            }}>
+              &gt; AI_ASSISTANT
+            </h2>
+            <p style={{
+              margin: 0,
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              gemini-2.5-flash ready
+            </p>
+          </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="btn-ghost"
-            style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}
+            style={{
+              width: '28px',
+              height: '28px',
+              padding: 0,
+              background: 'transparent',
+              border: '2px solid var(--accent-secondary)',
+              color: 'var(--accent-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '16px',
+              fontWeight: '700',
+              transition: 'all var(--transition-fast)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--accent-secondary)';
+              e.currentTarget.style.color = '#0f0e0d';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--accent-secondary)';
+            }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+            ✕
           </button>
         </div>
-        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
-          Generate content with AI assistance
-        </p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', background: 'var(--glass-bg)' }}>
-        {tabs.map(tab => (
+      {/* Command Tabs */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid var(--text-muted)',
+        background: '#0a0a0a',
+      }}>
+        {[
+          { key: 'generate' as const, label: 'generate' },
+          { key: 'ideas' as const, label: 'ideas' },
+          { key: 'titles' as const, label: 'titles' },
+        ].map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             style={{
-              flex: 1, padding: '12px', border: 'none', cursor: 'pointer',
-              background: activeTab === tab.key ? 'var(--glass-bg-active)' : 'transparent',
-              color: activeTab === tab.key ? 'var(--accent-blue)' : 'var(--text-muted)',
-              fontWeight: activeTab === tab.key ? '600' : '400',
-              fontSize: '13px',
-              borderBottom: activeTab === tab.key ? '2px solid var(--accent-blue)' : '2px solid transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              flex: 1,
+              padding: '12px',
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === tab.key ? '#0f0e0d' : 'transparent',
+              color: activeTab === tab.key ? 'var(--accent-secondary)' : 'var(--text-muted)',
+              fontWeight: '700',
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              borderBottom: activeTab === tab.key ? '2px solid var(--accent-secondary)' : '2px solid transparent',
               transition: 'all var(--transition-fast)',
             }}
           >
-            {tab.icon} {tab.label}
+            $ {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+      {/* Content Area */}
+      <div style={{
+        flex: 1,
+        overflow: 'auto',
+        padding: '20px',
+        background: '#0f0e0d',
+      }}>
         {activeTab === 'generate' && (
           <div>
             {/* Topic */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Topic *</label>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--accent-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                &gt; topic *
+              </label>
               <input
                 type="text"
                 value={formData.topic}
                 onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
                 placeholder="e.g., Getting Started with AI"
                 className="glass-input"
+                style={{
+                  background: '#0a0a0a',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                }}
               />
             </div>
 
             {/* Content Type */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Content Type</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--accent-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                &gt; type
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                 {typeOptions.map(option => (
                   <button
                     key={option.value}
                     onClick={() => setFormData({ ...formData, type: option.value as FormData['type'] })}
-                    className={formData.type === option.value ? 'ai-option-active' : 'ai-option'}
                     style={{
-                      padding: '10px', borderRadius: 'var(--radius-md)',
-                      border: `1px solid ${formData.type === option.value ? 'var(--accent-blue)' : 'var(--glass-border)'}`,
-                      background: formData.type === option.value ? 'rgba(59, 130, 246, 0.1)' : 'var(--glass-bg)',
-                      color: formData.type === option.value ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                      fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                      textAlign: 'center', transition: 'all var(--transition-fast)',
+                      padding: '10px',
+                      border: `2px solid ${formData.type === option.value ? 'var(--accent-secondary)' : 'var(--text-muted)'}`,
+                      background: formData.type === option.value ? 'rgba(212, 255, 0, 0.1)' : '#0a0a0a',
+                      color: formData.type === option.value ? 'var(--accent-secondary)' : 'var(--text-muted)',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all var(--transition-fast)',
+                      fontFamily: 'var(--font-mono)',
+                      textTransform: 'uppercase',
                     }}
                   >
                     {option.label}
@@ -270,11 +331,27 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
 
             {/* Tone */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Tone</label>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--accent-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                &gt; tone
+              </label>
               <select
                 value={formData.tone}
                 onChange={(e) => setFormData({ ...formData, tone: e.target.value as FormData['tone'] })}
                 className="glass-input"
+                style={{
+                  background: '#0a0a0a',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                }}
               >
                 {toneOptions.map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -284,11 +361,27 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
 
             {/* Length */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Length</label>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--accent-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                &gt; length
+              </label>
               <select
                 value={formData.length}
                 onChange={(e) => setFormData({ ...formData, length: e.target.value as FormData['length'] })}
                 className="glass-input"
+                style={{
+                  background: '#0a0a0a',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                }}
               >
                 {lengthOptions.map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -298,35 +391,76 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
 
             {/* Keywords */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Keywords (optional)</label>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--accent-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                &gt; keywords
+              </label>
               <input
                 type="text"
                 value={formData.keywords}
                 onChange={(e) => setFormData({ ...formData, keywords: e.target.value })}
-                placeholder="AI, content, automation (comma separated)"
+                placeholder="AI, content, automation"
                 className="glass-input"
+                style={{
+                  background: '#0a0a0a',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                }}
               />
             </div>
 
-            {/* Checkboxes */}
-            <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+            {/* Flags */}
+            <div style={{
+              marginBottom: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              paddingLeft: '12px',
+              borderLeft: '2px solid var(--text-muted)',
+            }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                gap: '8px',
+                fontSize: '11px',
+                color: 'var(--text-secondary)',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+              }}>
                 <input
                   type="checkbox"
                   checked={formData.includeSEO}
                   onChange={(e) => setFormData({ ...formData, includeSEO: e.target.checked })}
-                  style={{ accentColor: 'var(--accent-blue)' }}
+                  style={{ accentColor: 'var(--accent-secondary)' }}
                 />
-                Include SEO optimization
+                --include-seo
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                gap: '8px',
+                fontSize: '11px',
+                color: 'var(--text-secondary)',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+              }}>
                 <input
                   type="checkbox"
                   checked={formData.includeOutline}
                   onChange={(e) => setFormData({ ...formData, includeOutline: e.target.checked })}
-                  style={{ accentColor: 'var(--accent-blue)' }}
+                  style={{ accentColor: 'var(--accent-secondary)' }}
                 />
-                Include content outline
+                --include-outline
               </label>
             </div>
 
@@ -334,37 +468,84 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
             <button
               onClick={generateContent}
               disabled={loading || !formData.topic.trim()}
-              className="btn-gradient"
-              style={{ width: '100%', padding: '14px', fontSize: '14px', marginBottom: '20px' }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: loading ? 'var(--text-muted)' : 'var(--accent-secondary)',
+                color: '#0f0e0d',
+                border: '3px solid #0f0e0d',
+                fontSize: '12px',
+                fontWeight: '700',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginBottom: '20px',
+                transition: 'all var(--transition-fast)',
+              }}
             >
               {loading ? (
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />
-                  Generating...
+                  Generating<span className="terminal-cursor" />
                 </span>
-              ) : 'Generate Content'}
+              ) : '$ run generate'}
             </button>
 
-            {/* Generated Content Preview */}
+            {/* Generated Content Output */}
             {generatedContent && (
-              <div className="glass-card" style={{ padding: '20px' }}>
-                <h3 style={{ margin: '0 0 12px 0', color: 'var(--accent-blue)', fontSize: '14px', fontWeight: '600' }}>
-                  Generated Content Preview
-                </h3>
-                <div style={{ maxHeight: '200px', overflow: 'auto', marginBottom: '16px' }}>
-                  <h4 style={{ fontSize: '14px', color: 'var(--text-primary)', margin: '0 0 8px 0', fontWeight: '600' }}>
-                    {generatedContent.title}
-                  </h4>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 12px 0', lineHeight: '1.5' }}>
-                    {generatedContent.excerpt}
-                  </p>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', gap: '16px' }}>
-                    <span>{generatedContent.wordCount} words</span>
-                    <span>{generatedContent.readingTime} min read</span>
+              <div style={{
+                border: '2px solid var(--accent-secondary)',
+                background: '#0a0a0a',
+                padding: '16px',
+                marginTop: '16px',
+              }}>
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--accent-secondary)',
+                  marginBottom: '12px',
+                  fontFamily: 'var(--font-mono)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: '700',
+                }}>
+                  &gt; output
+                </div>
+                <div style={{
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  fontFamily: 'var(--font-mono)',
+                  marginBottom: '12px',
+                }}>
+                  <div style={{ marginBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>title:</span> {generatedContent.title}
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>excerpt:</span> {generatedContent.excerpt}
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>words:</span> {generatedContent.wordCount}
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>read_time:</span> {generatedContent.readingTime}min
                   </div>
                 </div>
-                <button onClick={insertContent} className="btn-success" style={{ width: '100%', padding: '12px', fontSize: '13px' }}>
-                  Insert Content
+                <button
+                  onClick={insertContent}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: 'var(--accent-primary)',
+                    color: '#0f0e0d',
+                    border: '3px solid #0f0e0d',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    fontFamily: 'var(--font-mono)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  $ insert content
                 </button>
               </div>
             )}
@@ -373,57 +554,96 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
 
         {activeTab === 'ideas' && (
           <div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.6' }}>
-              Get creative content ideas based on your topic.
-            </p>
-
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Topic *</label>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--accent-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                &gt; topic *
+              </label>
               <input
                 type="text"
                 value={formData.topic}
                 onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                placeholder="Enter a topic..."
+                placeholder="e.g., AI content creation"
                 className="glass-input"
+                style={{
+                  background: '#0a0a0a',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                }}
               />
             </div>
 
             <button
               onClick={generateIdeas}
               disabled={loading || !formData.topic.trim()}
-              className="btn-gradient"
-              style={{ width: '100%', padding: '14px', fontSize: '14px', marginBottom: '20px' }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: loading ? 'var(--text-muted)' : 'var(--accent-secondary)',
+                color: '#0f0e0d',
+                border: '3px solid #0f0e0d',
+                fontSize: '12px',
+                fontWeight: '700',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginBottom: '20px',
+              }}
             >
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />
-                  Generating Ideas...
-                </span>
-              ) : 'Generate Ideas'}
+              {loading ? 'Generating...' : '$ run ideas'}
             </button>
 
             {ideas.length > 0 && (
-              <div>
-                <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Content Ideas
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {ideas.map((idea, index) => (
-                    <button
-                      key={index}
-                      onClick={() => insertIdea(idea)}
-                      className="glass-card-elevated"
-                      style={{
-                        padding: '14px 16px', cursor: 'pointer', fontSize: '13px',
-                        color: 'var(--text-primary)', textAlign: 'left',
-                        border: '1px solid var(--glass-border)', width: '100%',
-                        background: 'var(--glass-bg)', lineHeight: '1.5',
-                      }}
-                    >
-                      {idea}
-                    </button>
-                  ))}
+              <div style={{
+                border: '2px solid var(--accent-secondary)',
+                background: '#0a0a0a',
+                padding: '0',
+              }}>
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--accent-secondary)',
+                  padding: '12px 16px',
+                  fontFamily: 'var(--font-mono)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: '700',
+                  borderBottom: '1px solid var(--text-muted)',
+                }}>
+                  &gt; results [{ideas.length}]
                 </div>
+                {ideas.map((idea, index) => (
+                  <div
+                    key={index}
+                    onClick={() => insertIdea(idea)}
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: index < ideas.length - 1 ? '1px solid var(--text-muted)' : 'none',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      transition: 'background var(--transition-fast)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '12px',
+                      color: 'var(--text-primary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(212, 255, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <span style={{ color: 'var(--accent-secondary)' }}>{index + 1}.</span> {idea}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -431,57 +651,96 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onContentGenerated, currentCo
 
         {activeTab === 'titles' && (
           <div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.6' }}>
-              Generate SEO-optimized title variations for your content.
-            </p>
-
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Topic *</label>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--accent-secondary)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                &gt; topic *
+              </label>
               <input
                 type="text"
                 value={formData.topic}
                 onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                placeholder="Enter a topic..."
+                placeholder="e.g., AI tools for writers"
                 className="glass-input"
+                style={{
+                  background: '#0a0a0a',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                }}
               />
             </div>
 
             <button
               onClick={generateTitles}
               disabled={loading || !formData.topic.trim()}
-              className="btn-gradient"
-              style={{ width: '100%', padding: '14px', fontSize: '14px', marginBottom: '20px' }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: loading ? 'var(--text-muted)' : 'var(--accent-secondary)',
+                color: '#0f0e0d',
+                border: '3px solid #0f0e0d',
+                fontSize: '12px',
+                fontWeight: '700',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginBottom: '20px',
+              }}
             >
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />
-                  Generating Titles...
-                </span>
-              ) : 'Generate Titles'}
+              {loading ? 'Generating...' : '$ run titles'}
             </button>
 
             {titles.length > 0 && (
-              <div>
-                <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Title Variations
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {titles.map((title, index) => (
-                    <button
-                      key={index}
-                      onClick={() => insertTitle(title)}
-                      className="glass-card-elevated"
-                      style={{
-                        padding: '14px 16px', cursor: 'pointer', fontSize: '13px',
-                        fontWeight: '600', color: 'var(--text-primary)', textAlign: 'left',
-                        border: '1px solid var(--glass-border)', width: '100%',
-                        background: 'var(--glass-bg)', lineHeight: '1.5',
-                      }}
-                    >
-                      {title}
-                    </button>
-                  ))}
+              <div style={{
+                border: '2px solid var(--accent-secondary)',
+                background: '#0a0a0a',
+                padding: '0',
+              }}>
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--accent-secondary)',
+                  padding: '12px 16px',
+                  fontFamily: 'var(--font-mono)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: '700',
+                  borderBottom: '1px solid var(--text-muted)',
+                }}>
+                  &gt; results [{titles.length}]
                 </div>
+                {titles.map((title, index) => (
+                  <div
+                    key={index}
+                    onClick={() => insertTitle(title)}
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: index < titles.length - 1 ? '1px solid var(--text-muted)' : 'none',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      transition: 'background var(--transition-fast)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '12px',
+                      color: 'var(--text-primary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(212, 255, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <span style={{ color: 'var(--accent-secondary)' }}>{index + 1}.</span> {title}
+                  </div>
+                ))}
               </div>
             )}
           </div>
